@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@theme {
+    --color-main: #0B2027;
+    --color-main-light: #133A47;
+    --color-text: #000;
+    --color-text-white: #F5F5F5;
+    --color-text-secondary: #7A7A7A;
+    --color-icon: #109442;
+    --color-button: #136F63;
+    --color-hover-button: #1B9D8C;
+    --color-primary-gradient: #FAFDED;
+    --color-secondary-gradient: #E2F3CD;
+    --color-border: #EAEBEB;
+    --color-focus: #46D883;
+    --color-income: #16CA5B;
+    --color-expense: #F44336;
+    --color-balance: #7B61FF;
+    --color-accounts: #FF9800;
+}
+
+/* Custom animations */
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-20px);
+    }
+}
+
+@keyframes float-delayed {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-15px);
+    }
+}
+
+@keyframes float-slow {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-25px);
+    }
+}
+
+.animate-float {
+    animation: float 6s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+    animation: float-delayed 7s ease-in-out infinite;
+    animation-delay: 1s;
+}
+
+.animate-float-slow {
+    animation: float-slow 8s ease-in-out infinite;
+    animation-delay: 0.5s;
+}
+
+.blur-bg {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+}
+
+.safe-h {
+    height: 100dvh;
+}
