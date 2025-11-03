@@ -41,17 +41,32 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
-        try {
-            const response = await api.post('/login', { email, password });
-            const { user, authorization } = response.data;
+        const response = await api.post('/login', { email, password }, { validateStatus: () => true });
+        const { user, authorization } = response.data;
 
-            localStorage.setItem('token', authorization.token);
-            localStorage.setItem('user', JSON.stringify(user));
-            setUser(user);
+        localStorage.setItem('token', authorization.token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
 
+        if (response.status === 201 || response.status === 200) {
             return { success: true, message: 'Login successful' };
-        } catch (error) {
-            return { success: false, message: error.response.data.message };
+        } else if (response.status === 401 || response.status === 403) {
+            console.error('Login failed:', error);
+            return { success: false, message: response.data.message || "Login failed" };
+        } else if (response.status === 422) {
+            console.log("Validation errors:", response.data.errors);
+            return {
+                success: false,
+                message: response.data.message || 'Validation failed',
+                errors: response.data.errors
+            };
+        } else {
+            console.log("Unexpected error:", response.data);
+            return {
+                success: false,
+                message: response.data.message || 'Login failed',
+                errors: response.data.errors
+            };
         }
     };
 

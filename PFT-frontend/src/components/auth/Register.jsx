@@ -111,7 +111,7 @@ export default function Register() {
         >
             <h2 className="text-3xl font-semibold text-main text-center">Create Account</h2>
             <p className="mb-4 text-text-secondary">
-                or use your email for registration:
+                use your email for registration:
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3" method="POST">
