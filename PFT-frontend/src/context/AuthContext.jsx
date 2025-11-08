@@ -42,33 +42,40 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (email, password) => {
         const response = await api.post('/login', { email, password }, { validateStatus: () => true });
-        const { user, authorization } = response.data;
-
-        localStorage.setItem('token', authorization.token);
-        localStorage.setItem('user', JSON.stringify(user));
-        setUser(user);
-
-        if (response.status === 201 || response.status === 200) {
-            return { success: true, message: 'Login successful' };
-        } else if (response.status === 401 || response.status === 403) {
-            console.error('Login failed:', error);
-            return { success: false, message: response.data.message || "Login failed" };
-        } else if (response.status === 422) {
-            console.log("Validation errors:", response.data.errors);
+    
+        if (response.status === 401 || response.status === 403) {
+            return { success: false, message: response.data.message || 'Invalid email or password' };
+        }
+    
+        if (response.status === 422) {
             return {
                 success: false,
                 message: response.data.message || 'Validation failed',
-                errors: response.data.errors
-            };
-        } else {
-            console.log("Unexpected error:", response.data);
-            return {
-                success: false,
-                message: response.data.message || 'Login failed',
-                errors: response.data.errors
+                errors: response.data.errors,
             };
         }
+    
+        if (response.status !== 200 && response.status !== 201) {
+            console.error("Unexpected response:", response);
+            return {
+                success: false,
+                message: response.data.message || 'Something went wrong',
+            };
+        }
+    
+        const { user, authorization } = response.data;
+    
+        if (!authorization || !authorization.token) {
+            return { success: false, message: 'Missing authorization data in response' };
+        }
+    
+        localStorage.setItem('token', authorization.token);
+        localStorage.setItem('user', JSON.stringify(user));
+        setUser(user);
+    
+        return { success: true, message: 'Login successful' };
     };
+    
 
     const logout = async () => {
         try {

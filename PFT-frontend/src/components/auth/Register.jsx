@@ -1,11 +1,10 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import VerifyModal from "../modal/VerifyModal";
 
 export default function Register() {
     const { register } = useAuth();
-    const navigate = useNavigate();
 
     const [loading, setLoading] = useState(false);
     const [form, setForm] = useState({
@@ -14,6 +13,7 @@ export default function Register() {
         password: "",
         confirmPassword: ""
     });
+    const [showVerificationModal, setShowVerificationModal] = useState(false);
 
     const [errors, setErrors] = useState({
         name: "",
@@ -42,7 +42,6 @@ export default function Register() {
         );
 
         if (!result.success) {
-            console.log("Error:", result.error)
             setErrors({
                 name: result.errors?.name?.[0] || "",
                 email: result.errors?.email?.[0] || "",
@@ -51,7 +50,7 @@ export default function Register() {
             });
         } else {
             setErrors({});
-            navigate("/auth?mode=login");
+            setShowVerificationModal(true);
         }
 
         setLoading(false);
@@ -150,6 +149,14 @@ export default function Register() {
                     {loading ? "Signing Up..." : "Sign Up"}
                 </button>
             </form>
+
+            {
+                <VerifyModal
+                    show={showVerificationModal}
+                    onClose={() => setShowVerificationModal(false)}
+                    email={form.email}
+                />
+            }
         </motion.div>
     );
 }

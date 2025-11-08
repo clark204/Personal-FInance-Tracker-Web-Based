@@ -56,7 +56,7 @@ class AuthController extends Controller
                 'user' => $user,
             ], HttpResponse::HTTP_CREATED);
         }
-        
+
         return response()->json([
             'status' => 'success',
             'message' => 'User Created Successfully. Please check your email for verification link.',
@@ -68,26 +68,26 @@ class AuthController extends Controller
     {
         $user = User::findOrFail($id);
 
-        if (! URL::hasValidSignature($request)) {
-            return response()->json(['message' => 'Invalid or expired verification link.'], 400);
+        if (!URL::hasValidSignature($request)) {
+            return response()->view('emails.verification_failed', [
+                'message' => 'Invalid or expired verification link.'
+            ]);
         }
 
         if (sha1($user->email) !== $hash) {
-            return response()->json(['message' => 'Invalid verification data.'], 400);
+            return response()->view('emails.verification_failed', [
+                'message' => 'Invalid verification data.'
+            ]);
         }
 
         if ($user->email_verified_at) {
-            return response()->json(['message' => 'Email already verified.'], 200);
+            return redirect()->away(env('FRONTEND_URL') . '/auth?mode=login');
         }
 
         $user->email_verified_at = now();
         $user->save();
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Email verified successfully! You can now log in.',
-            'user' => $user
-        ]);
+        return redirect()->away(env('FRONTEND_URL') . '/auth?mode=login');
     }
 
     public function login(Request $request)
@@ -112,7 +112,7 @@ class AuthController extends Controller
         if (!$token) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized'
+                'message' => 'Invalide credentials'
             ], HttpResponse::HTTP_UNAUTHORIZED);
         }
 

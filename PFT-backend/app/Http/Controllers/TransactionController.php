@@ -225,7 +225,12 @@ class TransactionController extends Controller
      */
     public function destroy(transaction $transaction, Request $request)
     {
-        if ($transaction->account->user_id !== $request->user()->id);
+        if ($transaction->account->user_id !== $request->user()->id) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized action.'
+            ], 403);
+        };
 
         $transaction->delete();
 

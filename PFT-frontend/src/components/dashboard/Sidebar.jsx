@@ -9,15 +9,31 @@ import {
     ChevronLeft,
     X,
     LogOut,
+    User,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useMediaQuery } from "react-responsive";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../../context/AuthContext";
+import ConfirmModal from "../modal/confirmModal";
 
 export default function Sidebar({ onClose }) {
+    // User
+    const {user} = useAuth();
+
     const navigate = useNavigate();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [profileMenuOpen, setProfileMenuOpen] = useState(false); // toggle for profile dropdown
     const mobileVP = useMediaQuery({ maxWidth: 768 });
+
+    const [confirmModal, setConfirmModal] = useState(false);
+
+    const { logout } = useAuth();
+
+    const handleLogout = async () => {
+        await logout();
+        setConfirmModal(false);
+    }
 
     const menuItems = [
         { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
@@ -25,7 +41,6 @@ export default function Sidebar({ onClose }) {
         { id: "budgets", label: "Budgets", icon: TrendingUp, path: "/dashboard/budgets" },
         { id: "goals", label: "Savings Goals", icon: Target, path: "/dashboard/goals" },
         { id: "accounts", label: "Accounts", icon: Settings, path: "/dashboard/accounts" },
-        { id: "settings", label: "Settings", icon: Settings, path: "/dashboard/settings" },
     ];
 
     return (
@@ -65,10 +80,7 @@ export default function Sidebar({ onClose }) {
                         onClick={() => setIsCollapsed(!isCollapsed)}
                         className="p-2 rounded-md hover:bg-slate-700 transition-colors duration-300"
                     >
-                        <motion.div
-                            animate={{ rotate: isCollapsed ? 180 : 0 }}
-                            transition={{ duration: 0.4 }}
-                        >
+                        <motion.div animate={{ rotate: isCollapsed ? 180 : 0 }} transition={{ duration: 0.4 }}>
                             <ChevronLeft className="w-5 h-5 text-slate-300" />
                         </motion.div>
                     </button>
@@ -89,17 +101,7 @@ export default function Sidebar({ onClose }) {
                                 className="flex items-center gap-3 w-full px-4 py-2 text-sm font-medium text-text-secondary rounded-md hover:bg-slate-700 hover:text-white transition-colors duration-150"
                             >
                                 <Icon className="w-5 h-5 text-icon flex-shrink-0" />
-                                {!isCollapsed && (
-                                    <motion.span
-                                        layout
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        transition={{ duration: 0.2 }}
-                                    >
-                                        {item.label}
-                                    </motion.span>
-                                )}
+                                {!isCollapsed && item.label}
                             </button>
 
                             {/* Tooltip when collapsed */}
@@ -116,7 +118,7 @@ export default function Sidebar({ onClose }) {
             </nav>
 
             {/* Footer */}
-            <motion.div layout className="p-4 border-t border-main-light space-y-3">
+            <motion.div layout className="p-4 border-t border-main-light space-y-3 relative">
                 {!isCollapsed ? (
                     <div className="bg-main-light/50 rounded-lg p-4">
                         <p className="text-xs text-text-secondary mb-2">Total Balance</p>
@@ -128,14 +130,55 @@ export default function Sidebar({ onClose }) {
                     </div>
                 )}
 
-                {/* Logout */}
-                <button
-                    className="flex items-center gap-3 w-full px-4 py-2 text-sm font-medium text-[var(--color-expense)] hover:text-white hover:bg-[var(--color-expense)]/20 rounded-md transition-all duration-200"
-                >
-                    <LogOut className="w-5 h-5" />
-                    {!isCollapsed && <span>Logout</span>}
-                </button>
+                {/* Profile / Logout dropdown */}
+                <div className="relative">
+                    <button
+                        onClick={() => setProfileMenuOpen(!profileMenuOpen)}
+                        className="flex items-center gap-3 w-full px-4 py-2 text-sm font-medium text-[var(--color-expense)] hover:text-white hover:bg-[var(--color-expense)]/20 rounded-md transition-all duration-200"
+                    >
+                        <User className="w-5 h-5" />
+                        {!isCollapsed && <span>{user.name}</span>}
+                    </button>
+
+                    <AnimatePresence>
+                        {profileMenuOpen && (
+                            <motion.div
+                                initial={{ opacity: 0, x: -10, y: -15 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -10 }}
+                                className="absolute left-full top-1/2 -translate-y-1/2 ml-2 w-40 bg-slate-800 border border-slate-700 rounded-md shadow-lg z-50"
+                            >
+                                <button
+                                    onClick={() => navigate("/dashboard/profile")}
+                                    className="w-full text-left px-4 py-2 text-sm text-white hover:bg-slate-700"
+                                >
+                                    Profile
+                                </button>
+                                <button
+                                    onClick={() => navigate("/dashboard/settings")}
+                                    className="w-full text-left px-4 py-2 text-sm text-white hover:bg-slate-700"
+                                >
+                                    Settings
+                                </button>
+                                <button
+                                    onClick={() => setConfirmModal(true)}
+                                    className="w-full text-left px-4 py-2 text-sm text-expense hover:bg-expense/50"
+                                >
+                                    Logout
+                                </button>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+
             </motion.div>
+
+            <ConfirmModal
+                show={confirmModal}
+                text="Are you sure you want to delete this account?"
+                onSubmit={handleLogout}
+                onClose={() => setConfirmModal(false)}
+            />
         </motion.aside>
     );
 }

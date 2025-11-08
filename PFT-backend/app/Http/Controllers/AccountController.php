@@ -33,17 +33,16 @@ class AccountController extends Controller
                 'string',
                 'max:255',
                 'required',
-                // Check if the account name is already exist
-                function ($value, $fail) {
+                function ($attribute, $value, $fail) {
                     $exist = Account::where('account_name', $value)->exists();
-
                     if ($exist) {
-                        $fail("You already have an Account Name `{$value}`. Please chose another name.");
+                        $fail("You already have an Account Name '{$value}'. Please choose another name.");
                     }
-                }
+                },
             ],
-            'currency_id' => 'require|exists:currencies,curreny_id',
-            'type' => 'string|in:cash,general,credit card',
+
+            'currency_id' => 'required|exists:currencies,id',
+            'type' => 'string|in:Cash,General,Credit Card',
             'balance' => 'numeric|min:0',
         ]);
 

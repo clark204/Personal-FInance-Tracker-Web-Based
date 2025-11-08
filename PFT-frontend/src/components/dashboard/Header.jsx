@@ -3,15 +3,26 @@ import { useState } from "react";
 import TransactionModal from "../modal/TransactionModal";
 import { useMediaQuery } from "react-responsive";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function Header({ onMenuClick }) {
+
+    const location = useLocation();
     const navigate = useNavigate();
     const [transactionModal, setTransactionModal] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
 
     const mobileVP = useMediaQuery({ maxWidth: 768 });
 
+    const pageTitle = () => {
+        const path = location.pathname.toLowerCase();
+
+        if (path.includes("/transactions")) return "Transaction";
+        if (path.includes("/budgets")) return "Budget";
+        if (path.includes("/goals")) return "Savings Goal";
+        if (path.includes("/accounts")) return "Accounts";
+        return "Dashboard";
+    }
     return (
         <>
             <header className="bg-white border-b border-slate-200 px-6 py-4 shadow-sm">
@@ -27,7 +38,7 @@ export default function Header({ onMenuClick }) {
 
                     {/* Left: Title */}
                     <div>
-                        <h2 className="text-2xl font-semibold text-slate-900">Dashboard</h2>
+                        <h2 className="text-2xl font-semibold text-slate-900">{pageTitle()}</h2>
                         <p className="text-sm text-slate-500">Monday, October 20, 2025</p>
                     </div>
 
@@ -62,10 +73,6 @@ export default function Header({ onMenuClick }) {
                                 <Bell className="w-5 h-5 text-slate-600" />
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full"></span>
                             </button>
-
-                            <div onClick={() => navigate("/dashboard/profile")} className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold flex items-center justify-center rounded-full shadow-sm">
-                                JD
-                            </div>
                         </div>
                     ) : (
                         <div className="flex items-center gap-3">
@@ -111,12 +118,6 @@ export default function Header({ onMenuClick }) {
                                 <Bell className="w-4 h-4 text-slate-600" />
                                 Notifications
                             </button>
-                            <div className="flex items-center gap-2 px-3 py-2">
-                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold flex items-center justify-center rounded-full shadow-sm">
-                                    JD
-                                </div>
-                                <span className="text-sm text-slate-700 font-medium">John Doe</span>
-                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

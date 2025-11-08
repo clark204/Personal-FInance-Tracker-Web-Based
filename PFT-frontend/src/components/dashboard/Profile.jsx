@@ -8,8 +8,12 @@ import {
     TrendingDown,
     CreditCard,
 } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Profile() {
+
+    const {user} = useAuth();
+
     return (
         <div className="h-screen overflow-auto bg-gradient-to-b from-primary-gradient to-secondary-gradient p-6 text-color-text">
             {/* Profile Header */}
@@ -25,10 +29,10 @@ export default function Profile() {
                     </div>
                     <div>
                         <h2 className="text-xl font-semibold text-color-text">
-                            John Doe
+                            {user.name}
                         </h2>
                         <p className="flex items-center gap-2 text-color-text-secondary text-sm">
-                            <Mail className="w-4 h-4" /> john.doe@example.com
+                            <Mail className="w-4 h-4" /> {user.email}
                         </p>
                     </div>
                 </div>
