@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Account;
 use App\Models\Savings;
 use Illuminate\Http\Request;
-    
+
 class SavingsController extends Controller
 {
     /**
@@ -15,10 +15,20 @@ class SavingsController extends Controller
     {
         $user = $request->user();
 
-        $savingsQuery = Savings::where('user_id', $user->id)->with(['account']);
+        $savingsQuery = Savings::where('user_id', $user->id)->with(['account'])->orderBy('created_at', 'desc');
+
+        if ($request->filled("search")) {
+            $searchTerm = $request->search;
+            $savingsQuery->where('savings_name', 'LIKE', '%' . $searchTerm . '%')
+                ->orWhere('description', 'LIKE', '%' . $searchTerm . '%');
+        }
 
         if ($request->filled('account_id')) {
             $savingsQuery->where('account_id', $request->account_id);
+        }
+
+        if ($request->filled('status')) {
+            $savingsQuery->where('status', $request->status);
         }
 
         if ($request->filled('date_from')) {
@@ -29,19 +39,21 @@ class SavingsController extends Controller
             $savingsQuery->where('deadline', '<=', $request->date_to);
         }
 
-        if ($request->filled('min_amount')) {
-            $savingsQuery->where('target_amount', '>=', $request->min_amount);
-        }
+        // if ($request->filled('min_amount')) {
+        //     $savingsQuery->where('target_amount', '>=', $request->min_amount);
+        // }
 
-        if ($request->filled('max_amount')) {
-            $savingsQuery->where('target_amount', '<=', $request->max_amount);
-        }
+        // if ($request->filled('max_amount')) {
+        //     $savingsQuery->where('target_amount', '<=', $request->max_amount);
+        // }
 
-        $savings = $savingsQuery->paginate(8);
+        $savings = $savingsQuery->paginate(6);
+        $account = Account::get();
 
         return response()->json([
             'status' => 'success',
             'data' => $savings->items(),
+            'account' => $account->load(['currency']),
             'pagination' => [
                 'current_page' => $savings->currentPage(),
                 'last_page' => $savings->lastPage(),
@@ -58,11 +70,11 @@ class SavingsController extends Controller
     {
         $validated = $request->validate([
             'account_id' => 'required|exists:accounts,id',
-            'savings_name' => 'required|string|max:255',
+            'savings_name' => 'required|string|max:255|unique:savings,savings_name,NULL,id,account_id,' . $request->account_id,
             'target_amount' => 'required|numeric|min:0',
             'saved_amount' => 'nullable|numeric',
             'status' => 'in:active,paused,reached',
-            'deadline' => 'required|date',
+            'deadline' => 'nullable|date',
             'description' => 'nullable|string|max:255',
         ]);
 
@@ -89,36 +101,52 @@ class SavingsController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Savings $savings, Request $request)
+    public function show($id, Request $request)
     {
-        if ($savings->account->user_id !== $request->user()->id) {
+        // First, find the savings record
+        $savings = Savings::find($id);
+
+        if (!$savings) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Savings goal not found.'
+            ], 404);
+        }
+
+        // Check if the savings belongs to the authenticated user
+        if ($savings->user_id !== $request->user()->id) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Unauthorized.'
             ], 403);
         }
 
+        $savings->load(['account', 'savingsTransactions']);
+
+        $account = Account::findOrFail($savings->account_id);
+        $account->load(['currency']);
+
         return response()->json([
             'status' => 'success',
-            'data' => $savings->load(['account'])
+            'data' => $savings,
+            'account' => $account
         ]);
     }
-
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Savings $savings)
+    public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'account_id' => 'required|exists:accounts,id',
             'savings_name' => 'required|string|max:255',
             'target_amount' => 'required|numeric|min:0',
-            'saved_amount' => 'nullable|numeric',
             'status' => 'in:active,paused,reached',
             'deadline' => 'required|date',
             'description' => 'nullable|string|max:255',
         ]);
+
+        $savings = Savings::findOrFail($id);
 
         if ($savings->account->user_id !== $request->user()->id) {
             return response()->json([

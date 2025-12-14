@@ -67,14 +67,16 @@ class AccountController extends Controller
     public function show($account_id)
     {
         $account = Account::where('user_id', Auth::id())
+            ->where('id', $account_id)
             ->with(['currency', 'transactions', 'budgets', 'savings'])
-            ->findOrFail($account_id);
+            ->firstOrFail();
 
         return response()->json([
             'status' => 'success',
             'data' => $account
         ]);
     }
+
 
     /**
      * Update the specified resource in storage.
@@ -85,7 +87,7 @@ class AccountController extends Controller
 
         $validated = $request->validate([
             'account_name' => 'sometimes|string|max:255',
-            'type' => 'sometimes|string|in:cash,credit card,general'
+            'type' => 'sometimes|string|in:Cash,Credit Card,General'
         ]);
 
         $account->update($validated);

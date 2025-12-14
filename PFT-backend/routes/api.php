@@ -3,7 +3,12 @@
 use App\Http\Controllers\AccountController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CurrencyController;
+use App\Http\Controllers\ExportController;
+use App\Http\Controllers\SavingsController;
+use App\Http\Controllers\SavingsTransactionController;
 use App\Http\Controllers\TransactionController;
 
 // ----------------------------
@@ -27,4 +32,9 @@ Route::middleware('auth:api')->group(function () {
 
     Route::apiResource('transactions', TransactionController::class);
     Route::apiResource('accounts', AccountController::class);
+    Route::apiResource('categories', CategoryController::class);
+    Route::apiResource('budgets', BudgetController::class);
+    Route::apiResource('savings', SavingsController::class);
+    Route::apiResource('savings-transactions', SavingsTransactionController::class);
+    Route::get('/export', [ExportController::class, 'export']);
 });

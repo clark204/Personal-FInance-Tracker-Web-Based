@@ -18,7 +18,15 @@ class TransactionController extends Controller
     {
         $user = $request->user();
 
-        $transactionQuery = Transaction::where('user_id', $user->id)->with(['account', 'category']);
+        $transactionQuery = Transaction::where('user_id', $user->id)->with(['account', 'category'])->orderBy('created_at', 'desc');
+
+        if ($request->filled('search')) {
+            $searchTerm = $request->search;
+            $transactionQuery->where(function ($query) use ($searchTerm) {
+                $query->where('description', 'LIKE', '%' . $searchTerm . '%')
+                    ->orWhere('amount', 'LIKE', '%' . $searchTerm . '%');
+            });
+        }
 
         if ($request->filled('account_id')) {
             $transactionQuery->where('account_id', $request->account_id);
@@ -38,14 +46,6 @@ class TransactionController extends Controller
 
         if ($request->filled('date_to')) {
             $transactionQuery->where('date', '<=', $request->date_to);
-        }
-
-        if ($request->filled('min_amount')) {
-            $transactionQuery->where('amount', '>=', $request->min_amount);
-        }
-
-        if ($request->filled('max_amount')) {
-            $transactionQuery->where('amount', '<=', $request->max_amount);
         }
 
         $transactions = $transactionQuery->paginate(8);
@@ -79,49 +79,54 @@ class TransactionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'account_id' => 'required|exists:accounts,account_id',
-            'category_id' => 'required|exists:categories,category_id',
-            'source' => 'required|string|max:255',
-            'type' => 'required|in:income,expense',
-            'amount' => 'required|numeric|min:0',
+            'account_id' => 'required|exists:accounts,id',
+            'category_id' => 'required|exists:categories,id',
+            'type'       => 'required|in:Income,Expense',
+            'amount'     => 'required|numeric|min:0',
             'description' => 'nullable|string|max:255',
-            'date' => 'required|date'
+            'date'       => 'required|date'
         ]);
 
         $user = $request->user();
         $account = Account::findOrFail($validated['account_id']);
 
         if ($account->user_id !== $user->id) {
-            return response()->json([
-                'status' => 'error',
-                'error' => 'Unauthorized Account!'
-            ], 403);
+            return response()->json(['status' => 'error', 'error' => 'Unauthorized Account!'], 403);
         }
 
-        if ($validated['type'] === 'income') {
+        if ($validated['type'] === 'Income') {
             $account->balance += $validated['amount'];
-        } else if ($validated['type'] === 'expense') {
+        } else {
             if ($account->balance < $validated['amount']) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Insufficient funds for this expense!'
-                ], 400);
+                return response()->json(['status' => 'error', 'message' => 'Insufficient funds!'], 400);
             }
             $account->balance -= $validated['amount'];
-
-            Budget::where('user_id', $user->id)
-                ->where('category_id', $validated['category_id'])
-                ->whereDate('start_date', '<=', $validated['date'])
-                ->whereDate('end_date', '>=', $validated['date'])
-                ->increment('budget_spent', $validated['amount']);
         }
 
         $account->save();
 
+        // Create the transaction
         $transaction = Transaction::create([
             ...$validated,
             'user_id' => $user->id
         ]);
+
+        // Attach transaction to matching budget
+        $budget = Budget::where('user_id', $user->id)
+            ->where('category_id', $validated['category_id'])
+            ->where('account_id', $validated['account_id'])
+            ->whereDate('start_date', '<=', $validated['date'])
+            ->whereDate('end_date', '>=', $validated['date'])
+            ->first();
+
+        if ($budget) {
+            $transaction->budget_id = $budget->id;
+            $transaction->save();
+
+            if ($transaction->type === 'Expense') {
+                $budget->increment('budget_spent', $transaction->amount);
+            }
+        }
 
         return response()->json([
             'status' => 'success',
@@ -151,73 +156,84 @@ class TransactionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, transaction $transaction)
+    public function update(Request $request, Transaction $transaction)
     {
         $user = $request->user();
 
         if ($transaction->account->user_id !== $user->id) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Unauthorized'
-            ], 403);
+            return response()->json(['status' => 'error', 'message' => 'Unauthorized'], 403);
         }
 
         if ($transaction->created_at->diffInHours(now()) > 48) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'This transaction can no longer be edited (time limit exceeded).'
-            ], 403);
+            return response()->json(['status' => 'error', 'message' => 'This transaction can no longer be edited.'], 403);
         }
 
         $validated = $request->validate([
-            'account_id' => 'sometimes|exists:accounts,account_id',
-            'category_id' => 'sometimes|exists:categories,category_id',
-            'type' => 'sometimes|in:income,expense',
-            'amount' => 'sometimes|numeric|min:0',
+            'account_id'  => 'sometimes|exists:accounts,id',
+            'category_id' => 'sometimes|exists:categories,id',
+            'type'        => 'sometimes|in:Income,Expense',
+            'amount'      => 'sometimes|numeric|min:0',
             'description' => 'nullable|string|max:255',
-            'date' => 'sometimes|date'
         ]);
 
-        if ($transaction->type === 'income') {
-            $transaction->account->balance -= $transaction->amount;
-        } else if ($transaction->type === 'expense') {
-            $transaction->account->balance += $transaction->amount;
+        $oldType = $transaction->type;
+        $oldAmount = $transaction->amount;
+        $oldAccount = $transaction->account;
+        $oldBudget = $transaction->budget;
+
+        // Reverse old account balance impact
+        if ($oldType === 'Income') {
+            $oldAccount->balance -= $oldAmount;
+        } else {
+            $oldAccount->balance += $oldAmount;
+        }
+        $oldAccount->save();
+
+        // Reverse old budget impact
+        if ($oldBudget && $oldType === 'Expense') {
+            $oldBudget->budget_spent -= $oldAmount;
+            $oldBudget->save();
         }
 
-        $type = $validated['type'] ?? $transaction->type;
-        $amount = $validated['amount'] ?? $transaction->amount;
-
-        if ($type === 'income') {
-            $transaction->account->balance += $amount;
-        } else if ($type === 'expense') {
-            if ($transaction->account->balance < $amount) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Insufficient funds for this expense!'
-                ], 400);
-            }
-            $transaction->account->balance -= $amount;
-
-            $budget = Budget::where('user_id', $user->id)
-                ->where('category_id', $validated['category_id'] ?? $transaction->category_id)
-                ->whereDate('start_date', '<=', $validated['date'] ?? $transaction->date)
-                ->whereDate('end_date', '>=', $validated['date'] ?? $transaction->date)
-                ->first();
-
-            if ($budget) {
-                $budget->budget_spent -= $transaction->amount;
-                $budget->budget_spent += $amount;
-                $budget->save();
-            }
-        }
-
-        $transaction->account->save();
-
+        // Apply new values
         $transaction->update($validated);
+        $transaction->refresh();
 
-        return response()->json(
-            $transaction->load(['account', 'category'])
-        );
+        $newType = $transaction->type;
+        $newAmount = $transaction->amount;
+
+        $newAccount = Account::find($transaction->account_id);
+
+        // Apply new account balance
+        if ($newType === 'Income') {
+            $newAccount->balance += $newAmount;
+        } else {
+            if ($newAccount->balance < $newAmount) {
+                return response()->json(['status' => 'error', 'message' => 'Insufficient funds!'], 400);
+            }
+            $newAccount->balance -= $newAmount;
+        }
+        $newAccount->save();
+
+        // Attach to new budget
+        $newBudget = Budget::where('user_id', $user->id)
+            ->where('category_id', $transaction->category_id)
+            ->where('account_id', $transaction->account_id)
+            ->whereDate('start_date', '<=', $transaction->date)
+            ->whereDate('end_date', '>=', $transaction->date)
+            ->first();
+
+        if ($newBudget) {
+            $transaction->budget_id = $newBudget->id;
+            $transaction->save();
+
+            if ($newType === 'Expense') {
+                $newBudget->budget_spent += $newAmount;
+                $newBudget->save();
+            }
+        }
+
+        return response()->json($transaction->load(['account', 'category']));
     }
 
     /**
@@ -231,6 +247,21 @@ class TransactionController extends Controller
                 'message' => 'Unauthorized action.'
             ], 403);
         };
+
+        // Reverse budget impact
+        $budget = $transaction->budget;
+        if ($budget && $transaction->type === 'Expense') {
+            $budget->budget_spent -= $transaction->amount;
+            $budget->save();
+        }
+        // Reverse account balance impact
+        $account = $transaction->account;
+        if ($transaction->type === 'Income') {
+            $account->balance -= $transaction->amount;
+        } else {
+            $account->balance += $transaction->amount;
+        }
+        $account->save();
 
         $transaction->delete();
 

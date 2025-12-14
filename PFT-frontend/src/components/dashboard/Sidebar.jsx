@@ -16,10 +16,15 @@ import { useMediaQuery } from "react-responsive";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import ConfirmModal from "../modal/confirmModal";
+import { useAccount } from "../../hooks/account";
 
 export default function Sidebar({ onClose }) {
     // User
     const {user} = useAuth();
+    const {getAccounts} = useAccount();
+    const accounts = getAccounts.data?.account || [];
+
+    const totalBalance = accounts.reduce((sum, account) => sum + parseFloat(account.balance || 0), 0);
 
     const navigate = useNavigate();
     const [isCollapsed, setIsCollapsed] = useState(false);
@@ -48,7 +53,7 @@ export default function Sidebar({ onClose }) {
             layout
             animate={{ width: isCollapsed ? 80 : 256 }}
             transition={{ type: "spring", stiffness: 150, damping: 20 }}
-            className="h-screen bg-[#0B2027] text-white flex flex-col border-r border-slate-700 relative"
+            className="h-screen bg-main text-white flex flex-col border-r border-slate-700 relative"
         >
             {/* Close button for mobile */}
             {mobileVP && (
@@ -121,8 +126,8 @@ export default function Sidebar({ onClose }) {
             <motion.div layout className="p-4 border-t border-main-light space-y-3 relative">
                 {!isCollapsed ? (
                     <div className="bg-main-light/50 rounded-lg p-4">
-                        <p className="text-xs text-text-secondary mb-2">Total Balance</p>
-                        <p className="text-2xl font-semibold text-white">$25,770.50</p>
+                        <p className="text-xs text-text-secondary mb-2">Current account</p>
+                        <p className="text-2xl font-semibold text-white">{totalBalance}</p>
                     </div>
                 ) : (
                     <div className="flex items-center justify-center">

@@ -15,7 +15,7 @@ export default function ConfirmModal({ show, text, onSubmit, onClose }) {
                         animate={{ y: 0, scale: 1, opacity: 1 }}
                         exit={{ y: 20, scale: 0.95, opacity: 0 }}
                         transition={{ type: "spring", stiffness: 200, damping: 22 }}
-                        className="bg-gradient-to-b from-slate-900 to-slate-800 text-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8"
+                        className="bg-linear-to-b from-slate-900 to-slate-800 text-white rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-8"
                     >
                         <div className="text-center space-y-4">
                             <h2 className="text-xl sm:text-2xl font-semibold text-emerald-400">
@@ -35,7 +35,7 @@ export default function ConfirmModal({ show, text, onSubmit, onClose }) {
                             </button>
                             <button
                                 onClick={onSubmit}
-                                className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-[var(--color-expense)] hover:bg-[var(--color-expense)]/80 text-sm sm:text-base font-semibold transition-all duration-200"
+                                className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-expense hover:bg-expense/80 text-sm sm:text-base font-semibold transition-all duration-200"
                             >
                                 Confirm
                             </button>

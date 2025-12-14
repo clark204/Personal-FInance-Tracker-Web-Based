@@ -1,23 +1,48 @@
 import React, { useState } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSavings } from "../../hooks/savings";
+import AccountDropdown from "../common/AccountDropdown";
 
 export default function GoalModal({ isOpen, onClose }) {
-    const [form, setForm] = useState({
-        goalName: "",
-        targetAmount: "",
+    const { createSavings } = useSavings();
+
+    const [formData, setFormData] = useState({
+        account_id: "",
+        savings_name: "",
+        saved_amount: "",
+        target_amount: "",
         deadline: "",
-        category: "",
+        description: "",
     });
 
     const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        console.log("New goal:", form);
-        onClose();
+        const goalData = {
+            account_id: Number(formData.account_id),
+            savings_name: formData.savings_name,
+            saved_amount: Number(formData.saved_amount) || 0,
+            target_amount: Number(formData.target_amount),
+            deadline: formData.deadline,
+            description: formData.description || null,
+        }
+        createSavings.mutate(goalData, {
+            onSuccess: () => {
+                setFormData({
+                    account_id: "",
+                    savings_name: "",
+                    saved_amount: "",
+                    target_amount: "",
+                    deadline: "",
+                    description: "",
+                });
+                onClose();
+            },
+        });
     };
 
     return (
@@ -39,79 +64,107 @@ export default function GoalModal({ isOpen, onClose }) {
                         {/* Header */}
                         <div className="flex justify-between items-start border-b pb-3 mb-5">
                             <div>
-                                <h2 className="text-lg font-semibold text-gray-900">
+                                <h2 className="text-lg font-semibold text-text">
                                     Create New Savings Goal
                                 </h2>
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-text-secondary">
                                     Set a target and deadline for your savings goal
                                 </p>
                             </div>
                             <button
                                 onClick={onClose}
-                                className="p-2 rounded-full hover:bg-gray-100 transition"
+                                className="p-2 rounded-full hover:bg-text-secondary/50 transition"
                             >
-                                <X className="w-5 h-5 text-gray-500" />
+                                <X className="w-5 h-5 text-text" />
                             </button>
                         </div>
 
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="space-y-4">
+                            {/* Account */}
+                            <div>
+                                <label htmlFor="account_id" className="label-style">
+                                    Account *
+                                </label>
+                                <AccountDropdown
+                                    selectedId={formData.account_id}
+                                    onSelect={(val) =>
+                                        setFormData((prev) => ({ ...prev, account_id: val }))
+                                    }
+                                />
+                            </div>
+
                             {/* Goal Name */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Goal Name
+                                <label className="label-style">
+                                    Goal Name <span className="text-expense">*</span>
                                 </label>
                                 <input
                                     type="text"
-                                    name="goalName"
+                                    name="savings_name"
                                     placeholder="e.g., Vacation Fund"
-                                    value={form.goalName}
+                                    value={formData.savings_name}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"
+                                    className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-focus outline-none"
+                                />
+                            </div>
+
+                            {/* Saved Amount */}
+                            <div>
+                                <label className="label-style">
+                                    Saved Already
+                                </label>
+                                <input
+                                    type="number"
+                                    name="saved_amount"
+                                    placeholder="0.00"
+                                    value={formData.saved_amount}
+                                    onChange={handleChange}
+                                    className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-focus outline-none"
                                 />
                             </div>
 
                             {/* Target Amount */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Target Amount
+                                <label className="label-style">
+                                    Target Amount <span className="text-expense">*</span>
                                 </label>
                                 <input
                                     type="number"
-                                    name="targetAmount"
+                                    name="target_amount"
                                     placeholder="0.00"
-                                    value={form.targetAmount}
+                                    value={formData.target_amount}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"
+                                    className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-focus outline-none"
                                 />
                             </div>
 
                             {/* Deadline */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                <label className="label-style">
                                     Deadline
                                 </label>
                                 <input
                                     type="date"
                                     name="deadline"
-                                    value={form.deadline}
+                                    value={formData.deadline}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"
+                                    className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-focus outline-none"
                                 />
                             </div>
 
-                            {/* Category */}
+                            {/* Description */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    Category
+                                <label className="label-style">
+                                    Description
                                 </label>
                                 <input
                                     type="text"
-                                    name="category"
+                                    name="description"
                                     placeholder="e.g., Travel, Technology, Emergency"
-                                    value={form.category}
+                                    value={formData.description}
                                     onChange={handleChange}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"
+                                    className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-focus outline-none"
                                 />
                             </div>
 
@@ -120,13 +173,13 @@ export default function GoalModal({ isOpen, onClose }) {
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-100 transition"
+                                    className="px-4 py-2 rounded-lg border border-border text-text hover:bg-text-secondary/50 transition"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 rounded-lg bg-gray-900 text-white font-medium hover:bg-gray-800 transition"
+                                    className="px-4 py-2 border border-border rounded-lg bg-button text-white font-medium hover:bg-hover-button transition"
                                 >
                                     Create Goal
                                 </button>

@@ -17,6 +17,7 @@
     --color-expense: #F44336;
     --color-balance: #7B61FF;
     --color-accounts: #FF9800;
+    --color-edit: #499DD4;
 }
 
 /* Custom animations */
@@ -54,6 +55,14 @@
     50% {
         transform: translateY(-25px);
     }
+}
+
+.label-style {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 2px;
+    color: rgba(0, 0, 0, 0.8);
 }
 
 .animate-float {

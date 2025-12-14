@@ -26,7 +26,7 @@ export const useAccount = (accountID) => {
             return response.data;
         },
         enabled: !!accountID
-    })
+    });
 
     const createAccount = useMutation({
         mutationFn: async (newData) => {
@@ -51,8 +51,8 @@ export const useAccount = (accountID) => {
     })
 
     const deleteAccount = useMutation({
-        mutationFn: async () => {
-            const response = await api.delete(`/accounts/${accountID}`, {
+        mutationFn: async (id) => {
+            const response = await api.delete(`/accounts/${id}`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
 

@@ -14,10 +14,18 @@ class BudgetController extends Controller
     {
         $user = $request->user()->id;
 
-        $budgetQuery = Budget::where('user_id', $user)->with(['user', 'category']);
+        $budgetQuery = Budget::where('user_id', $user)->with(['user', 'category', 'account', 'transactions']);
+
+        if ($request->filled('account_id')) {
+            $budgetQuery->where('account_id', $request->account_id);
+        }
 
         if ($request->filled('category_id')) {
             $budgetQuery->where('category_id', $request->category_id);
+        }
+
+        if ($request->filled('status')) {
+            $budgetQuery->where('status', $request->status);
         }
 
         if ($request->filled('date_from')) {
@@ -28,15 +36,7 @@ class BudgetController extends Controller
             $budgetQuery->where('end_date', '<=', $request->date_to);
         }
 
-        if ($request->filled('min_amount')) {
-            $budgetQuery->where('budget_amount', '>=', $request->min_amount);
-        }
-
-        if ($request->filled('max_amount')) {
-            $budgetQuery->where('budget_amount', '<=', $request->max_amount);
-        }
-
-        $budgets = $budgetQuery->paginate(8);
+        $budgets = $budgetQuery->paginate(6);
 
         return response()->json([
             'status' => 'success',
@@ -57,6 +57,7 @@ class BudgetController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
+            'account_id' => 'required|exists:accounts,id',
             'category_id' => 'required|exists:categories,id',
             'period_type' => 'required|in:week,month,year,custom',
             'start_date' => 'nullable|date',
@@ -102,7 +103,7 @@ class BudgetController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Budget created successfully.',
-            'data' => $budget->load(['user', 'category'])
+            'data' => $budget->load(['user', 'category', 'account'])
         ], 201);
     }
 
@@ -118,7 +119,7 @@ class BudgetController extends Controller
             ], 403);
         };
 
-        return response()->json($budget->load(['user', 'category']));
+        return response()->json($budget->load(['user', 'category', 'transactions']));
     }
 
     /**
@@ -134,19 +135,61 @@ class BudgetController extends Controller
         }
 
         $validated = $request->validate([
+            'account_id' => 'sometimes|exists:accounts,id',
             'category_id' => 'sometimes|exists:categories,id',
             'budget_amount' => 'sometimes|numeric|min:0',
-            'start_date' => 'sometimes|date',
-            'end_date' => 'sometimes|date|after_or_equal:start_date',
+            'period_type' => 'sometimes|in:week,month,year,custom',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
 
+        $now = now();
+
+        if (isset($validated['period_type'])) {
+
+            switch ($validated['period_type']) {
+                case 'week':
+                    $validated['start_date'] = $now->copy()->startOfWeek();
+                    $validated['end_date'] = $now->copy()->endOfWeek();
+                    break;
+
+                case 'month':
+                    $validated['start_date'] = $now->copy()->startOfMonth();
+                    $validated['end_date'] = $now->copy()->endOfMonth();
+                    break;
+
+                case 'year':
+                    $validated['start_date'] = $now->copy()->startOfYear();
+                    $validated['end_date'] = $now->copy()->endOfYear();
+                    break;
+
+                case 'custom':
+                    if (empty($validated['start_date']) || empty($validated['end_date'])) {
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Custom period requires start_date and end_date.'
+                        ], 422);
+                    }
+                    break;
+            }
+        }
+
         $budget->update($validated);
+
+        // propagate account change to all associated transactions
+        if (isset($validated['account_id'])) {
+            $budget->transaction()->update([
+                'account_id' => $validated['account_id']
+            ]);
+        }
 
         return response()->json([
             'status' => 'success',
             'data' => $budget->load(['user', 'category'])
         ]);
     }
+
+
 
     /**
      * Remove the specified resource from storage.

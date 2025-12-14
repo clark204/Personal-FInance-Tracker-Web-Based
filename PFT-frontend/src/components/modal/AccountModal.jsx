@@ -11,7 +11,7 @@ export default function AccountModal({ isOpen, onClose }) {
         accountName: "",
         type: "Cash",
         currency: "",
-        balance: 0,
+        balance: "",
     });
 
     const handleChange = (e) => {
@@ -27,13 +27,10 @@ export default function AccountModal({ isOpen, onClose }) {
             type: formData.type,
             currency_id: parseInt(formData.currency),
             balance: parseFloat(formData.balance)
-        }
+        };
 
-        console.log(accountData);
         createAccount.mutate(accountData, {
-            onSuccess: () => {
-                onClose();
-            },
+            onSuccess: onClose,
             onError: (err) => {
                 console.error("Error creating account:", err);
             },
@@ -69,37 +66,48 @@ export default function AccountModal({ isOpen, onClose }) {
                             <button
                                 onClick={onClose}
                                 className="p-2 rounded-full hover:bg-gray-100 transition"
+                                aria-label="Close modal"
                             >
                                 <X className="w-5 h-5 text-text" />
                             </button>
                         </div>
 
                         {/* Form */}
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4" method="POST">
                             {/* Account Name */}
                             <div>
-                                <label className="block text-sm font-medium text-text/70">
+                                <label
+                                    htmlFor="accountName"
+                                    className="block text-sm font-medium text-text/70"
+                                >
                                     Account Name
                                 </label>
                                 <input
+                                    id="accountName"
                                     type="text"
                                     name="accountName"
                                     value={formData.accountName}
                                     onChange={handleChange}
                                     placeholder="e.g., Main Wallet"
+                                    autoComplete="account-name"
                                     className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"
                                 />
                             </div>
 
                             {/* Type */}
                             <div>
-                                <label className="block text-sm font-medium text-text/70">
+                                <label
+                                    htmlFor="type"
+                                    className="block text-sm font-medium text-text/70"
+                                >
                                     Type
                                 </label>
                                 <select
+                                    id="type"
                                     name="type"
                                     value={formData.type}
                                     onChange={handleChange}
+                                    autoComplete="account-type"
                                     className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"
                                 >
                                     <option value="Cash">Cash</option>
@@ -109,24 +117,39 @@ export default function AccountModal({ isOpen, onClose }) {
                             </div>
 
                             {/* Currency Dropdown */}
-                            <Currency
-                                value={formData.currency}
-                                onChange={(val) =>
-                                    setFormData((prev) => ({ ...prev, currency: val }))
-                                }
-                            />
+                            <div>
+                                <label
+                                    htmlFor="currency"
+                                    className="block text-sm font-medium text-text/70"
+                                >
+                                    Currency
+                                </label>
+                                <Currency
+                                    id="currency"
+                                    name="currency"
+                                    value={formData.currency}
+                                    onChange={(val) =>
+                                        setFormData((prev) => ({ ...prev, currency: val }))
+                                    }
+                                />
+                            </div>
 
                             {/* Initial Balance */}
                             <div>
-                                <label className="block text-sm font-medium text-text/70">
+                                <label
+                                    htmlFor="balance"
+                                    className="block text-sm font-medium text-text/70"
+                                >
                                     Initial Balance
                                 </label>
                                 <input
+                                    id="balance"
                                     type="number"
                                     name="balance"
                                     value={formData.balance}
                                     onChange={handleChange}
                                     placeholder="e.g., 1000.00"
+                                    autoComplete="off"
                                     min="0"
                                     step="0.01"
                                     className="w-full border border-border rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-400 outline-none"

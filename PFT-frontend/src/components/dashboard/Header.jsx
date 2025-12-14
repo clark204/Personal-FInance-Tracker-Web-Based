@@ -4,6 +4,7 @@ import TransactionModal from "../modal/TransactionModal";
 import { useMediaQuery } from "react-responsive";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
+import ExportModal from "../modal/ExportModal";
 
 export default function Header({ onMenuClick }) {
 
@@ -11,6 +12,7 @@ export default function Header({ onMenuClick }) {
     const navigate = useNavigate();
     const [transactionModal, setTransactionModal] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
+    const [exportModal, setExportModal] = useState(false);
 
     const mobileVP = useMediaQuery({ maxWidth: 768 });
 
@@ -64,7 +66,10 @@ export default function Header({ onMenuClick }) {
                                 Add Transaction
                             </button>
 
-                            <button className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors">
+                            <button
+                                className="flex items-center gap-2 border border-slate-300 text-slate-700 text-sm font-medium px-4 py-2 rounded-lg hover:bg-slate-100 transition-colors"
+                                onClick={() => setExportModal(true)}
+                            >
                                 <Download className="w-4 h-4" />
                                 Export
                             </button>
@@ -127,6 +132,11 @@ export default function Header({ onMenuClick }) {
             <TransactionModal
                 isOpen={transactionModal}
                 onClose={() => setTransactionModal(false)}
+            />
+            {/* Export Modal */}
+            <ExportModal
+                isOpen={exportModal}
+                onClose={() => setExportModal(false)}
             />
         </>
     );

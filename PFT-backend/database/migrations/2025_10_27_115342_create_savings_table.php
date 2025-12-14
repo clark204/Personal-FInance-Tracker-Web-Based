@@ -20,7 +20,7 @@ return new class extends Migration
             $table->decimal('target_amount', 15, 2);
             $table->decimal('saved_amount', 15, 2)->default(0);
             $table->date('deadline')->nullable();
-            $table->string('description');
+            $table->string('description')->nullable();
             $table->timestamps();
         });
     }

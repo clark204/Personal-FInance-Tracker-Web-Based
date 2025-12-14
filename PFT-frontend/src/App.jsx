@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // Import router components
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Bounce, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // Import your page components
 import LandingPage from './page/LandingPage';
@@ -15,7 +17,6 @@ import Goal from './components/dashboard/Goal';
 import Settings from './components/dashboard/Settings';
 import Profile from './components/dashboard/Profile';
 import Account from './components/dashboard/Account';
-import VerifyEmail from './components/email/VerifyEmail';
 import { AuthProvider, useAuth } from './context/AuthContext';
 function App() {
 
@@ -64,11 +65,6 @@ function App() {
                 <AuthPage />
               </PublicRoutes>
             } />
-            <Route path="/verify-email/:id/:hash" element={
-              <PublicRoutes>
-                <VerifyEmail />
-              </PublicRoutes>
-            } />
 
             <Route path="/dashboard" element={
               <ProtectedRoutes>
@@ -84,6 +80,19 @@ function App() {
               <Route path="accounts" element={<Account />} />
             </Route>
           </Routes>
+          <ToastContainer
+            position="bottom-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            transition={Bounce}
+          />
         </Router>
       </AuthProvider>
     </QueryClientProvider>

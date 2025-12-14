@@ -15,7 +15,7 @@ export default function VerifyEmail() {
 
                 // Redirect after 3 seconds if successful
                 if (res.data.status === "success") {
-                    setTimeout(() => navigate("/auth"), 3000);
+                    setTimeout(() => navigate("/auth?mode=login"), 3000);
                 }
             })
             .catch(err => {
