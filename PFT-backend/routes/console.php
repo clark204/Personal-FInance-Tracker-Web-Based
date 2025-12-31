@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\CheckGoals;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -11,6 +12,7 @@ Artisan::command('inspire', function () {
 app()->booted(function () {
     $schedule = app(Schedule::class);
 
-    $schedule->command('budgets:update')->everyMinute();
+    $schedule->command('budgets:update')->everyFiveMinutes();
+    $schedule->command('check:goals')->everyMinute();
     // or ->everyFiveMinutes()
 });

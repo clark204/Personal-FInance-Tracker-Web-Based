@@ -14,7 +14,7 @@ class AccountController extends Controller
     public function index()
     {
         //
-        $account = Account::where('user_id', Auth::id())->with('currency')->get();
+        $account = Account::where('user_id', Auth::id())->with(['currency', 'transactions.category', 'budgets', 'savings'])->get();
 
         return response()->json([
             'status' => 'success',
@@ -68,7 +68,7 @@ class AccountController extends Controller
     {
         $account = Account::where('user_id', Auth::id())
             ->where('id', $account_id)
-            ->with(['currency', 'transactions', 'budgets', 'savings'])
+            ->with(['currency', 'transactions.category', 'budgets.category', 'savings.savingsTransactions'])
             ->firstOrFail();
 
         return response()->json([

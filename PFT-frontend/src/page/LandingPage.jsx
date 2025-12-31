@@ -46,9 +46,9 @@ function LandingPage() {
     ];
 
     return (
-        <div className="min-h-screen bg-[#0B2027]">
+        <div className="min-h-screen bg-main">
             {/* Header */}
-            <header className="fixed top-0 left-0 right-0 z-50 bg-[#0B2027]/95 backdrop-blur-sm border-b border-white/10">
+            <header className="fixed top-0 left-0 right-0 z-50 bg-main/95 backdrop-blur-sm border-b border-white/10">
                 <div className="flex items-center justify-between h-16 px-6 mx-auto">
                     {/* Logo */}
                     <div className="flex items-center gap-3">
@@ -78,7 +78,7 @@ function LandingPage() {
                         <Link to="/auth?mode=login" className="text-white hover:bg-white/10 px-4 py-2 rounded-xl transition-all duration-300">
                             Login
                         </Link>
-                        <Link to="/auth?mode=register" className="rounded-xl px-4 py-2 bg-gradient-to-r from-emerald-400 to-teal-500 text-[#0B2027] hover:from-emerald-500 hover:to-teal-600 transition-all duration-300">
+                        <Link to="/auth?mode=register" className="rounded-xl px-4 py-2 bg-linear-to-r from-emerald-400 to-teal-500 text-main hover:from-emerald-500 hover:to-teal-600 transition-all duration-300">
                             Get Started
                         </Link>
                     </div>
@@ -106,7 +106,7 @@ function LandingPage() {
 
                                 <h1 className="text-5xl md:text-6xl lg:text-7xl text-white leading-tight">
                                     Take Control of Your{" "}
-                                    <span className="bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
+                                    <span className="bg-linear-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
                                         Finances
                                     </span>
                                 </h1>
@@ -117,7 +117,7 @@ function LandingPage() {
                                 </p>
 
                                 <div className="flex flex-wrap gap-4">
-                                    <Link to="/auth?mode=register" className="flex items-center gap-2 px-5 py-3 rounded-xl font-medium bg-gradient-to-r from-emerald-400 to-teal-500 text-[#0B2027] hover:from-emerald-500 hover:to-teal-600 transition-all duration-300">
+                                    <Link to="/auth?mode=register" className="flex items-center gap-2 px-5 py-3 rounded-xl font-medium bg-linear-to-r from-emerald-400 to-teal-500 text-main hover:from-emerald-500 hover:to-teal-600 transition-all duration-300">
                                         Get Started
                                         <ArrowLeft className="w-5 h-5" />
                                     </Link >
@@ -149,12 +149,12 @@ function LandingPage() {
                 </section>
 
                 {/* Placeholder sections */}
-                <section id="features" className="py-24 bg-gradient-to-b from-[#0B2027] to-[#0f2a33]">
+                <section id="features" className="py-24 bg-linear-to-b from-main to-[#0f2a33]">
                     <div className="container mx-auto px-6">
                         <div className="text-center mb-16 space-y-4">
                             <h2 className="text-4xl md:text-5xl text-white">
                                 Powerful Features for{" "}
-                                <span className="bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
+                                <span className="bg-linear-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
                                     Smart Money Management
                                 </span>
                             </h2>
@@ -172,7 +172,7 @@ function LandingPage() {
                                         className="rounded-xl bg-white/5 border-white/10 hover:bg-white/10 transition-all duration-300 hover:border-emerald-500/30 group"
                                     >
                                         <div className="p-8 space-y-4">
-                                            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                            <div className="w-14 h-14 rounded-xl bg-linear-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
                                                 <Icon className="w-7 h-7 text-emerald-400" />
                                             </div>
                                             <h3 className="text-xl text-white">{feature.title}</h3>
@@ -197,7 +197,7 @@ function LandingPage() {
                                 <div className="space-y-4">
                                     <h2 className="text-4xl md:text-5xl text-white">
                                         About{" "}
-                                        <span className="bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
+                                        <span className="bg-linear-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">
                                             FinanceTracker
                                         </span>
                                     </h2>
@@ -217,7 +217,7 @@ function LandingPage() {
                             <div className="space-y-6">
                                 <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-all duration-300">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center">
+                                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center">
                                             <Target className="w-6 h-6 text-emerald-400" />
                                         </div>
                                         <div>
@@ -232,7 +232,7 @@ function LandingPage() {
 
                                 <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-all duration-300">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center">
+                                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center">
                                             <Users className="w-6 h-6 text-emerald-400" />
                                         </div>
                                         <div>
@@ -247,7 +247,7 @@ function LandingPage() {
 
                                 <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 hover:bg-white/10 transition-all duration-300">
                                     <div className="flex items-start gap-4">
-                                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center">
+                                        <div className="w-12 h-12 rounded-xl bg-linear-to-br from-emerald-400/20 to-teal-500/20 flex items-center justify-center">
                                             <Award className="w-6 h-6 text-emerald-400" />
                                         </div>
                                         <div>
@@ -265,13 +265,13 @@ function LandingPage() {
                 </section>
             </main>
 
-            <footer className="bg-[#0B2027] border-t border-white/10 py-16" id='contact'>
+            <footer className="bg-main border-t border-white/10 py-16" id='contact'>
                 <div className="container mx-auto px-6">
                     <div className="grid md:grid-cols-4 gap-12 mb-12">
                         {/* Company info */}
                         <div className="space-y-4">
                             <div className="flex items-center gap-2">
-                                <div className="bg-[url('/FT.svg')] bg-center bg-cover w-10 h-10 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center">
+                                <div className="bg-[url('/FT.svg')] bg-center bg-cover w-10 h-10 bg-linear-to-br from-emerald-400 to-teal-500 rounded-lg flex items-center justify-center">
                                 </div>
                                 <span className="text-white text-xl">FinanceTracker</span>
                             </div>

@@ -33,15 +33,26 @@ export const useExport = () => {
             queryFn: async () => {
                 const data = await fetchExportData(exportForm);
 
-                if (exportForm.type === 'budgets') {
-                    return data?.budgets?.length || 0;
-                }
+                if (!data) return 0;
 
-                return Array.isArray(data) ? data.length : 0;
+                switch (exportForm.type) {
+                    case "budgets":
+                        // { budgets: [], budget_transactions: [] }
+                        return data?.budgets?.length || 0;
+
+                    case "savings":
+                        // { savings: [], savings_transactions: [] }
+                        return data?.savings?.length || 0;
+
+                    default:
+                        // fallback for simple array exports
+                        return Array.isArray(data) ? data.length : 0;
+                }
             },
             staleTime: 1000 * 60 * 5,
         });
     };
+
 
 
     return {

@@ -7,12 +7,12 @@ export default function Currency({ value, onChange }) {
 
     return (
         <div className="flex flex-col gap-2">
-            <label
+            {/* <label
                 htmlFor="currency"
                 className="text-sm font-semibold text-text/70"
             >
                 Select Currency
-            </label>
+            </label> */}
             <select
                 id="currency"
                 className="border border-border p-2 rounded-md focus:ring-2 focus:ring-emerald-400 outline-none"

@@ -83,7 +83,19 @@ export const useSavings = (savingsID = null, filters = {}) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["savings"] });
-            toast.success('Savings deleted successfully!', {
+            toast.success(`Savings deleted successfully!`, {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce,
+            });
+        },
+        onError: () => {
+            toast.error("Failed to delete savings. Please try again.", {
                 position: "bottom-right",
                 autoClose: 5000,
                 hideProgressBar: false,

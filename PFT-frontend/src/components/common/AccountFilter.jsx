@@ -6,7 +6,6 @@ export default function AccountFilter({ selectedAccount, onSelect }) {
 
     return (
         <div className="flex flex-col relative">
-            <label className="text-sm text-text block mb-1">Account</label>
             <select
                 value={selectedAccount || ""}
                 onChange={(e) => onSelect(e.target.value)}

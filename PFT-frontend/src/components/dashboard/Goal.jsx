@@ -1,19 +1,37 @@
-import React, { useState } from "react";
-import { Plus, Filter, ChevronDown, Trash2, SquarePen, Minus } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Filter, ChevronDown, Trash2, SquarePen, Minus, Search, Wallet, Calendar, Loader, PieChart } from "lucide-react";
 import { useMediaQuery } from "react-responsive";
-import GoalModal from "../modal/GoalModal";
+import GoalModal from "../modal/savings/GoalModal";
 import { useSavings } from "../../hooks/savings";
-import AddFundModal from "../modal/AddFundModal";
-import EditGoalModal from "../modal/EditGoalModal";
+import AddFundModal from "../modal/savings/AddFundModal";
+import EditGoalModal from "../modal/savings/EditGoalModal";
 import AccountFilter from "../common/AccountFilter";
 import PeriodSelect from "../common/PeriodSelect";
+import SavingsSummary from "../modal/savings/SavingsSummary";
+import ConfirmModal from "../common/confirmModal";
 
 export default function Goal() {
+    const mobileVP = useMediaQuery({ maxWidth: 768 });
+    const [showFilters, setShowFilters] = useState(true);
+    const [goalModal, setGoalModal] = useState(false);
+    const [addFundsModal, setAddFundsModal] = useState(false);
+    const [editGoalModal, setEditGoalModal] = useState(false);
+    const [savingsSummaryModal, setSavingsSummaryModal] = useState(false);
+    const [fundsType, setFundsType] = useState(null);
+    const [savingsID, setSavingsID] = useState(null);
+    const [isLoadingState, setIsLoadingState] = useState(true);
+    const [confirmDelete, setConfirmDelete] = useState({
+        isOpen: false,
+        savings_id: null,
+        savings_name: "",
+        savings_account: "",
+    })
+
     const [filters, setFilters] = useState({
         search: "",
         account_id: "",
         status: "",
-        datePreset: "",
+        datePreset: "all",
         date_from: "",
         page: 1,
         date_to: "",
@@ -25,38 +43,53 @@ export default function Goal() {
             [field]: value,
             page: field === "page" ? value : 1
         }));
+        // Reset loading state when filters change
+        setIsLoadingState(true);
     };
 
-    const { getSavings } = useSavings(null, filters);
+    const { getSavings, deleteSaving } = useSavings(null, filters);
     const goals = getSavings.data?.data || [];
     const accounts = getSavings.data?.account || [];
 
-    const [goalModal, setGoalModal] = useState(false);
-    const [addFundsModal, setAddFundsModal] = useState(false);
-    const [editGoalModal, setEditGoalModal] = useState(false);
-    const [fundsType, setFundsType] = useState(null);
-    const [savingsID, setSavingsID] = useState(null);
-    const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+    // Handle loading state
+    useEffect(() => {
+        if (getSavings.data || getSavings.error) {
+            setIsLoadingState(false);
+        }
+    }, [getSavings.data, getSavings.error]);
 
-    const mobileVP = useMediaQuery({ maxWidth: 768 });
+    // Determine if we should show loading
+    const showLoading = isLoadingState && goals.length === 0;
+
+    // Check if an account is selected
+    const isAccountSelected = () => {
+        return filters.account_id !== "" && filters.account_id !== null;
+    };
+
+    // Get filtered goals for the selected account only
+    const getFilteredGoalsForSummary = () => {
+        if (!isAccountSelected()) {
+            return [];
+        }
+        return goals.filter(goal => goal.account_id === parseInt(filters.account_id));
+    };
 
     const statusColor = (status) => {
         switch (status) {
             case "active":
-                return "text-income bg-green-100";
+                return "text-white bg-income";
             case "paused":
-                return "text-yellow-700 bg-yellow-100";
+                return "text-white bg-accounts";
             case "reached":
-                return "text-balance bg-indigo-100";
+                return "text-white bg-main";
             default:
-                return "text-slate-600 bg-slate-200";
+                return "text-white bg-main-light";
         }
     };
 
     function getDaysNumber(dateString) {
-        // Handle null/undefined/empty date string
         if (!dateString) {
-            return null; // Or Infinity or a special value
+            return null;
         }
 
         const today = new Date();
@@ -70,14 +103,12 @@ export default function Goal() {
     }
 
     function daysUntil(dateString) {
-        // Handle null/undefined deadline
         if (!dateString) {
             return "No deadline set";
         }
 
         const diffDays = getDaysNumber(dateString);
 
-        // Check if date is invalid
         if (isNaN(diffDays)) {
             return "Invalid date";
         }
@@ -95,16 +126,25 @@ export default function Goal() {
         }
     }
 
+    function formatDate(dateString) {
+        if (!dateString) return "No deadline";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
     function recommendedSaving(goal) {
         const remaining = parseFloat(goal.target_amount) - parseFloat(goal.saved_amount);
-        const daysNum = getDaysNumber(goal.deadline); // This will be null for no deadline
-        const daysDisplay = daysUntil(goal.deadline); // For display
+        const daysNum = getDaysNumber(goal.deadline);
+        const daysDisplay = daysUntil(goal.deadline);
 
         if (remaining <= 0) {
             return { amount: 0, unit: "complete", status: "reached", days: daysNum, daysDisplay };
         }
 
-        // Handle different goal statuses
         if (goal.status === "paused") {
             return {
                 amount: remaining.toFixed(2),
@@ -115,7 +155,7 @@ export default function Goal() {
             };
         }
 
-        if (goal.status === "completed") {
+        if (goal.status === "reached") {
             return {
                 amount: 0,
                 unit: "goal completed",
@@ -125,7 +165,6 @@ export default function Goal() {
             };
         }
 
-        // Handle goals with no deadline (null)
         if (goal.deadline === null || goal.deadline === undefined || goal.deadline === "") {
             return {
                 amount: remaining.toFixed(2),
@@ -136,7 +175,6 @@ export default function Goal() {
             };
         }
 
-        // Check if date is invalid
         if (isNaN(daysNum)) {
             return {
                 amount: remaining.toFixed(2),
@@ -147,7 +185,6 @@ export default function Goal() {
             };
         }
 
-        // For active goals with passed deadline
         if (daysNum < 0) {
             return {
                 amount: remaining.toFixed(2),
@@ -158,7 +195,6 @@ export default function Goal() {
             };
         }
 
-        // For active goals with 0 days (due today)
         if (daysNum === 0) {
             return {
                 amount: remaining.toFixed(2),
@@ -169,7 +205,6 @@ export default function Goal() {
             };
         }
 
-        // Normal calculation for active goals with valid deadline
         if (daysNum >= 30) {
             const months = daysNum / 30;
             return {
@@ -212,12 +247,6 @@ export default function Goal() {
             return;
         }
 
-        // if (preset === "today") {
-        //     start.setHours(0, 0, 0, 0);
-        //     updateFilter("date_from", start.toISOString().slice(0, 10));
-        //     updateFilter("date_to", now.toISOString().slice(0, 10));
-        // }
-
         if (preset === "week") {
             start.setDate(now.getDate() - now.getDay());
             updateFilter("date_from", start.toISOString().slice(0, 10));
@@ -244,283 +273,483 @@ export default function Goal() {
         updateFilter("datePreset", preset);
     }
 
-    return (
-        <div className="h-screen p-4 md:p-6 bg-linear-to-b from-primary-gradient to-secondary-gradient overflow-auto">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-6 gap-4 bg-white p-4 rounded-xl shadow-sm border border-border">
-                <div>
-                    <h1 className="text-2xl font-semibold text-main">Savings Goals</h1>
-                    <p className="text-text-secondary text-sm">Track your progress towards your financial goals</p>
+    const handleDeleteSaving = async () => {
+        deleteSaving.mutateAsync(confirmDelete.savings_id);
+        setConfirmDelete({
+            isOpen: false,
+            savings_id: null,
+            savings_name: ""
+        })
+    }
+
+    // Loading component for cards
+    const LoadingCard = () => (
+        <div className="bg-white border border-border rounded-xl shadow-sm p-5 flex flex-col animate-pulse">
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="h-6 w-32 bg-gray-200 rounded"></div>
+                        <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <div className="h-4 w-40 bg-gray-200 rounded"></div>
+                        <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                    </div>
                 </div>
-                <button
-                    onClick={() => setGoalModal(true)}
-                    className="flex items-center justify-center gap-2 px-4 py-2 bg-button text-white rounded-md hover:bg-hover-button transition"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add Goal
-                </button>
+                <div className="flex gap-2">
+                    <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                    <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-4 mb-6">
-                <div className="w-full flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                        <Filter className={`text-icon ${mobileVP ? "w-4 h-4" : "w-5 h-5"}`} />
-                        <h2 className={`font-semibold ${mobileVP ? "text-base" : "text-lg"}`}>Filters</h2>
-                    </div>
+            <div className="mb-4">
+                <div className="flex justify-between mb-2">
+                    <div className="h-4 w-16 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full mb-2"></div>
+                <div className="flex justify-between">
+                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-20 bg-gray-200 rounded"></div>
+                </div>
+            </div>
 
+            <div className="mt-auto pt-4 border-t border-gray-200">
+                <div className="rounded-lg p-3 mb-3 bg-gray-100">
+                    <div className="h-3 w-24 bg-gray-200 rounded mx-auto mb-2"></div>
+                    <div className="h-5 w-32 bg-gray-200 rounded mx-auto mb-1"></div>
+                    <div className="h-3 w-40 bg-gray-200 rounded mx-auto"></div>
+                </div>
+
+                <div className="flex gap-2">
+                    <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+                    <div className="flex-1 h-10 bg-gray-200 rounded-lg"></div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="h-screen p-4 md:p-6 bg-gradient-to-b from-primary-gradient to-secondary-gradient overflow-auto">
+            {/* HEADER SECTION */}
+            <div className="mb-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-main mb-2">Savings Goals</h1>
+                        <p className="text-text-secondary">Track your progress towards your financial goals</p>
+                    </div>
                     <button
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                        className="flex items-center text-sm text-text hover:font-medium cursor-pointer transition"
+                        onClick={() => setGoalModal(true)}
+                        className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-button text-white rounded-lg hover:bg-hover-button transition-colors"
                     >
-                        {isFiltersOpen ? "Hide" : "Show"}
-                        <ChevronDown
-                            className={`ml-1 transition-transform  ${isFiltersOpen ? "rotate-180" : ""} 
-                                        ${mobileVP ? "w-3 h-3" : "w-4 h-4"}`}
-                        />
+                        <Plus className="w-4 h-4" />
+                        Add Goal
                     </button>
                 </div>
-
-                {isFiltersOpen && (
-                    <div className="">
-                        <div className={`grid ${mobileVP ? "grid-cols-1 gap-3" : "grid-cols-3 gap-4"}`}>
-                            {/* Search */}
-                            <div className="c">
-                                <label className="text-sm block mb-1 text-text ">Search</label>
-                                <input
-                                    type="text"
-                                    placeholder="Search description..."
-                                    value={filters.search}
-                                    onChange={(e) => updateFilter("search", e.target.value)}
-                                    className="w-full border border-border bg-white rounded-md px-3 py-2 text-sm"
-                                />
-                            </div>
-
-                            {/* Account */}
-                            <AccountFilter
-                                selectedAccount={filters.account_id}
-                                onSelect={(value) => updateFilter("account_id", value)}
-                            />
-
-                            {/* Status */}
-                            <div>
-                                <label className="text-sm text-text block mb-1">Status</label>
-                                <select
-                                    className="w-full border border-border rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-focus outline-none"
-                                    value={filters.status}
-                                    onChange={(e) => updateFilter("status", e.target.value)}
-                                >
-                                    <option value="">All status</option>
-                                    <option value="active">Active</option>
-                                    <option value="paused">Paused</option>
-                                    <option value="reached">Reached</option>
-                                </select>
-                            </div>
-
-                            {/* Period */}
-                            <PeriodSelect
-                                datePreset={filters.datePreset}
-                                dateFrom={filters.date_from}
-                                dateTo={filters.date_to}
-                                onPresetChange={applyPreset}
-                                onDateFromChange={(value) => updateFilter("date_from", value)}
-                                onDateToChange={(value) => updateFilter("date_to", value)}
-                            />
-                        </div>
-
-                        {/* Clear Filter */}
-                        <div className="flex justify-end pt-4 border-t mt-4">
-                            <button
-                                onClick={() => {
-                                    // Reset all filters to default values
-                                    setFilters({
-                                        search: '',
-                                        account_id: '',
-                                        status: '',
-                                        datePreset: 'all', // or whatever your default preset is
-                                        date_from: '',
-                                        date_to: ''
-                                    });
-                                }}
-                                className="px-5 text-sm hover:font-medium rounded-lg  text-text/70
-                             hover:text-red-500 transition cursor-pointer"
-                            >
-                                Clear Filters
-                            </button>
-                        </div>
-                    </div>
-                )}
             </div>
 
-            {/* Savings Goal Cards */}
-            <div className="bg-white rounded-xl shadow-sm border border-border p-6 min-h-[450px] flex flex-col">
-                <div className={`grid ${mobileVP ? "grid-cols-1" : "grid-cols-2 lg:grid-cols-3"} gap-6 `}>
-                    {goals.map((goal) => {
-                        const progress = Math.min((goal.saved_amount / goal.target_amount) * 100, 100);
-                        const remaining = goal.target_amount - goal.saved_amount;
-                        const isComplete = remaining <= 0;
+            {/* FILTERS CARD */}
+            <div className="bg-white rounded-xl shadow-lg border border-border mb-6 overflow-hidden">
+                <div className="p-4 md:p-6">
+                    <div className="flex justify-between items-center mb-6">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-secondary-gradient rounded-lg">
+                                <Filter className="w-5 h-5 text-icon" />
+                            </div>
+                            <h2 className="text-lg font-semibold text-main">Filters</h2>
+                        </div>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="cursor-pointer flex items-center gap-1 text-sm text-text-secondary hover:text-main transition-colors"
+                        >
+                            {showFilters ? "Hide Filters" : "Show Filters"}
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+                        </button>
+                    </div>
 
-                        const rec = recommendedSaving(goal);
+                    {/* FILTERS CONTENT */}
+                    {showFilters && (
+                        <div className="animate-fadeIn">
+                            {/* First Row: Search */}
+                            <div className="mb-6">
+                                <label className="text-sm font-medium text-main mb-2 block">Search</label>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary w-4 h-4" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search goals..."
+                                        value={filters.search}
+                                        onChange={(e) => updateFilter("search", e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2.5 border border-border bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent transition"
+                                    />
+                                </div>
+                            </div>
 
-                        const account = accounts.find(acc => acc.id === goal.account_id);
+                            {/* Second Row: Status Filters */}
+                            <div className="mb-6">
+                                <label className="text-sm font-medium text-main mb-3 block">Status</label>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => updateFilter("status", "")}
+                                        className={`cursor-pointer px-4 py-2.5 rounded-lg border transition text-sm font-medium ${!filters.status ? 'bg-button text-white border-button' : 'bg-white border-border text-text-secondary hover:border-button hover:text-main'}`}
+                                    >
+                                        All
+                                    </button>
+                                    <button
+                                        onClick={() => updateFilter("status", "active")}
+                                        className={`cursor-pointer px-4 py-2.5 rounded-lg border transition text-sm font-medium ${filters.status === "active" ? 'bg-income text-white border-income' : 'bg-white border-border text-text-secondary hover:border-income hover:text-main'}`}
+                                    >
+                                        Active
+                                    </button>
+                                    <button
+                                        onClick={() => updateFilter("status", "paused")}
+                                        className={`cursor-pointer px-4 py-2.5 rounded-lg border transition text-sm font-medium ${filters.status === "paused" ? 'bg-accounts text-white border-accounts' : 'bg-white border-border text-text-secondary hover:border-accounts hover:text-main'}`}
+                                    >
+                                        Paused
+                                    </button>
+                                    <button
+                                        onClick={() => updateFilter("status", "reached")}
+                                        className={`cursor-pointer px-4 py-2.5 rounded-lg border transition text-sm font-medium ${filters.status === "reached" ? 'bg-main text-white border-main' : 'bg-white border-border text-text-secondary hover:border-main hover:text-main'}`}
+                                    >
+                                        Reached
+                                    </button>
+                                </div>
+                            </div>
 
-                        const status = goal.status.charAt(0).toUpperCase() + goal.status.slice(1);
-                        return (
-                            <div key={goal.id} className="bg-white rounded-xl shadow-sm border border-border p-5 hover:shadow-md transition relative">
-                                {/* Header */}
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-medium text-text">{goal.savings_name}</h3>
-                                        <p className="text-md font-semibold text-text-secondary">{goal.account.account_name}</p>
-                                        <span className="inline-block text-xs text-text-secondary mt-1">{goal.description || "-"}</span>
-                                    </div>
-                                    <div className="">
-                                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor(goal.status)}`}>{status}</span>
-                                    </div>
+                            {/* Third Row: Account and Period */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                {/* Account Filter */}
+                                <div>
+                                    <label className="text-sm font-medium text-main mb-2 flex items-center gap-2">
+                                        <Wallet className="w-4 h-4" />
+                                        Account
+                                    </label>
+                                    <AccountFilter
+                                        selectedAccount={filters.account_id}
+                                        onSelect={(value) => updateFilter("account_id", value)}
+                                    />
+                                </div>
+
+                                {/* Period Filter */}
+                                <div>
+                                    <label className="text-sm font-medium text-main mb-2 flex items-center gap-2">
+                                        <Calendar className="w-4 h-4" />
+                                        Period
+                                    </label>
                                     <div className="flex items-center gap-2">
-                                        <div className="rounded-full cursor-pointer">
-                                            <SquarePen
+                                        <div className="flex-1">
+                                            <PeriodSelect
+                                                datePreset={filters.datePreset}
+                                                dateFrom={filters.date_from}
+                                                dateTo={filters.date_to}
+                                                onPresetChange={applyPreset}
+                                                onDateFromChange={(value) => updateFilter("date_from", value)}
+                                                onDateToChange={(value) => updateFilter("date_to", value)}
+                                            />
+                                        </div>
+                                        {filters.datePreset === "custom" && (
+                                            <div className="flex items-center gap-2 text-sm text-text-secondary">
+                                                <span>{filters.date_from || "Start"}</span>
+                                                <span>to</span>
+                                                <span>{filters.date_to || "End"}</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between items-center pt-4 border-t border-border">
+                                <span className="text-sm text-text-secondary">
+                                    {showLoading ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader className="w-4 h-4 animate-spin" />
+                                            Loading...
+                                        </div>
+                                    ) : (
+                                        `${goals.length} goals found`
+                                    )}
+                                </span>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setFilters({
+                                                search: '',
+                                                account_id: '',
+                                                status: '',
+                                                datePreset: 'all',
+                                                date_from: '',
+                                                date_to: '',
+                                                page: 1
+                                            });
+                                        }}
+                                        className="cursor-pointer px-5 py-2 text-sm font-medium rounded-lg border border-border text-text-secondary hover:border-expense hover:text-expense transition-colors"
+                                    >
+                                        Clear Filters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* GOAL CARDS CONTAINER */}
+            <div className="bg-white rounded-xl shadow-lg border border-border overflow-hidden">
+                <div className="p-5 border-b border-border">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-main">
+                            Your Goals ({showLoading ? "..." : goals.length})
+                        </h2>
+                        <div className="flex items-center gap-4">
+                            {/* Show Savings Summary button only when an account is selected */}
+                            {isAccountSelected() && (
+                                <button
+                                    onClick={() => setSavingsSummaryModal(true)}
+                                    className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border text-main hover:border-button hover:bg-button hover:text-white transition-colors"
+                                >
+                                    <PieChart className="w-4 h-4" />
+                                    Savings Summary
+                                </button>
+                            )}
+                            <span className="text-sm text-text-secondary">
+                                {showLoading ? (
+                                    <div className="flex items-center gap-2">
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                        Loading goals...
+                                    </div>
+                                ) : (
+                                    `Showing ${goals.length} goals`
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Goal Cards Grid */}
+                <div className={`grid ${mobileVP ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"} gap-5 p-5`}>
+                    {showLoading ? (
+                        // Loading state - show 6 skeleton cards
+                        Array.from({ length: 6 }).map((_, index) => (
+                            <LoadingCard key={index} />
+                        ))
+                    ) : goals.length > 0 ? (
+                        goals.map((goal) => {
+                            const progress = Math.min((goal.saved_amount / goal.target_amount) * 100, 100);
+                            const remaining = goal.target_amount - goal.saved_amount;
+                            const isComplete = remaining <= 0;
+                            const rec = recommendedSaving(goal);
+                            const account = accounts.find(acc => acc.id === goal.account_id);
+                            const status = goal.status.charAt(0).toUpperCase() + goal.status.slice(1);
+                            const startDate = goal.created_at;
+                            const endDate = goal.deadline;
+
+                            return (
+                                <div key={goal.id} className="bg-white border border-border rounded-xl shadow-sm hover:shadow-lg transition-all p-5 flex flex-col hover:scale-102">
+                                    {/* Header */}
+                                    <div className="flex justify-between items-start ">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-lg font-semibold text-main">{goal.savings_name}</h3>
+                                                <span
+                                                    className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor(goal.status)}`}
+                                                >
+                                                    {status}
+                                                </span>
+                                            </div>
+
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
                                                 onClick={() => {
                                                     setEditGoalModal(true);
                                                     setSavingsID(goal.id);
                                                 }}
-                                                className="w-5 h-5 text-edit "
-                                            />
+                                                className="cursor-pointer p-2 text-edit hover:bg-edit/10 rounded-lg transition-colors"
+                                                title="Edit Goal"
+                                            >
+                                                <SquarePen className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                className="cursor-pointer p-2 text-expense hover:bg-expense/10 rounded-lg transition-colors"
+                                                title="Delete Goal"
+                                                onClick={() => {
+                                                    setConfirmDelete({
+                                                        isOpen: true,
+                                                        savings_id: goal.id,
+                                                        savings_name: goal.savings_name,
+                                                        savings_account: account?.account_name
+                                                    })
+                                                }}
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <button className="text-expense hover:text-red-700 cursor-pointer p-2 rounded-full">
-                                            <Trash2 className="w-4 h-4 text-lg" />
-                                        </button>
                                     </div>
-                                </div>
-
-                                {/* Progress */}
-                                <div className="mb-3">
-                                    <p className="text-sm text-text mb-1">Progress</p>
-                                    <div className="w-full bg-border rounded-full h-2">
-                                        <div
-                                            className="bg-linear-to-r from-main-light to-income h-2 rounded-full transition-all"
-                                            style={{ width: `${progress}%` }}
-                                        ></div>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-text mt-1">
-                                        <span>{progress.toFixed(1)}% complete</span>
-                                        <span className="font-medium text-main-light">
-                                            {account.currency?.symbol}{goal.saved_amount.toLocaleString()} / {account.currency?.symbol}{goal.target_amount.toLocaleString()}
+                                    <div className="flex flex-col gap-1 text-sm text-text-secondary w-full mb-2 mt-2">
+                                        <div className="flex items-center gap-1 w-full">
+                                            <span className="font-medium text-text bg-blue-300 px-1 py-0.5 rounded-md">{goal.account?.account_name || account?.account_name}</span>
+                                            <span>•</span>
+                                            <span>{formatDate(startDate)} - {formatDate(endDate)}</span>
+                                        </div>
+                                        <span className="text-text-secondary">
+                                            {goal.description || "No description"}
                                         </span>
                                     </div>
-                                </div>
 
-                                {/* Details */}
-                                <div className="border-t border-border pt-3 mt-3 text-sm">
-                                    <div className="flex justify-between items-center mb-2">
-                                        <div>
-                                            <p className="text-text/70 text-xs">Remaining</p>
-                                            <p className="font-medium text-main">
-                                                {isComplete ? "Goal Reached!" : `${account.currency?.symbol}${remaining.toLocaleString()}`}
-                                            </p>
+                                    {/* Progress */}
+                                    <div className="mb-4">
+                                        <div className="flex justify-between items-center text-sm mb-2">
+                                            <span className="text-text">Progress</span>
+                                            <span className="font-semibold text-main">
+                                                {account?.currency?.symbol || "$"}{goal.saved_amount.toLocaleString()} / {account?.currency?.symbol || "$"}{goal.target_amount.toLocaleString()}
+                                            </span>
                                         </div>
-                                        <div className="text-center">
-                                            <p className="text-text/70 text-xs">Days</p>
-                                            <p className={`font-medium ${typeof daysUntil(goal.deadline) === 'string' &&
-                                                (daysUntil(goal.deadline).includes('overdue') || daysUntil(goal.deadline) === 'Today')
-                                                ? 'text-red-600'
-                                                : daysUntil(goal.deadline) === 'No deadline set'
-                                                    ? 'text-text-secondary'
-                                                    : 'text-main'
-                                                }`}>
-                                                {daysUntil(goal.deadline)}
-                                            </p>
+                                        <div className="w-full bg-gray-200 border border-gray-400 rounded-full h-2 mb-2 overflow-hidden">
+                                            <div
+                                                className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-main-light to-income"
+                                                style={{ width: `${progress}%` }}
+                                            ></div>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-text">{progress.toFixed(1)}% complete</span>
+                                            <span className={`font-medium ${isComplete ? 'text-income' : 'text-main'}`}>
+                                                {isComplete ? "Goal Reached!" : `${account?.currency?.symbol || "$"}${remaining.toLocaleString()} remaining`}
+                                            </span>
                                         </div>
                                     </div>
 
-                                    <div className={`rounded-lg p-3 mt-2 text-center ${rec.status === "reached" ? "bg-green-100" :
-                                        rec.status === "overdue" ? "bg-red-100" :
-                                            rec.status === "urgent" ? "bg-yellow-100" :
-                                                rec.status === "paused" ? "bg-gray-100" :
-                                                    "bg-[#FAF3E0]"
-                                        }`}>
-                                        <p className="text-xs text-text">Recommended Saving</p>
-                                        {rec.status === "reached" ? (
-                                            <p className="text-lg font-semibold text-green-600">Goal Reached! 🎉</p>
-                                        ) : rec.status === "overdue" ? (
-                                            <>
-                                                <p className="text-lg font-semibold text-red-600">{account.currency?.symbol}{rec.amount} immediately</p>
-                                                <p className="text-xs text-text/70">Deadline passed - save now!</p>
-                                            </>
-                                        ) : rec.status === "urgent" ? (
-                                            <>
-                                                <p className="text-lg font-semibold text-yellow-600">{account.currency?.symbol}{rec.amount} / {rec.unit}</p>
-                                                <p className="text-xs text-text/70">Save now to meet deadline!</p>
-                                            </>
-                                        ) : rec.status === "paused" ? (
-                                            <>
-                                                <p className="text-lg font-semibold text-gray-600">{account.currency?.symbol}{rec.amount} when resumed</p>
-                                                <p className="text-xs text-text/70">Goal is paused</p>
-                                            </>
-                                        ) : rec.status === "no-deadline" ? (
-                                            <>
-                                                <p className="text-lg font-semibold text-blue-600">{account.currency?.symbol}{rec.amount} total</p>
-                                                <p className="text-xs text-text/70">Set deadline for better plan</p>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <p className="text-lg font-semibold text-main">
-                                                    {account.currency?.symbol}{rec.amount} / {rec.unit}
-                                                </p>
-                                                <p className="text-xs text-text/70">To reach your goal on time</p>
-                                            </>
-                                        )}
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => {
-                                                setAddFundsModal(true);
-                                                setSavingsID(goal.id);
-                                                setFundsType("deposit");
-                                            }}
-                                            className="mt-4 w-full flex items-center justify-center gap-2 border border-border py-2 rounded-md hover:bg-gray-50 transition">
-                                            <Plus className="w-4 h-4" />
-                                            <span className="text-sm font-medium text-main">Add Funds</span>
-                                        </button>
-                                        <button
-                                            onClick={() => {
-                                                setAddFundsModal(true);
-                                                setSavingsID(goal.id);
-                                                setFundsType("withdraw");
-                                            }}
-                                            className="mt-4 w-full flex items-center justify-center gap-2 border border-border py-2 rounded-md hover:bg-gray-50 transition">
-                                            <Minus className="w-4 h-4" />
-                                            <span className="text-sm font-medium text-main">Withdraw</span>
-                                        </button>
+                                    {/* Details */}
+                                    <div className="mt-auto pt-4 border-t border-border">
+                                        {/* Recommended Saving */}
+                                        <div className={`rounded-lg p-3 mb-3 text-center ${rec.status === "reached" ? "bg-income/10" :
+                                            rec.status === "overdue" ? "bg-expense/10" :
+                                                rec.status === "urgent" ? "bg-accounts/10" :
+                                                    rec.status === "paused" ? "bg-border/30" :
+                                                        "bg-primary-gradient/50"
+                                            }`}>
+                                            <p className="text-xs text-text-secondary mb-1">Recommended Saving</p>
+                                            {rec.status === "reached" ? (
+                                                <p className="text-lg font-semibold text-income">Goal Reached! 🎉</p>
+                                            ) : rec.status === "overdue" ? (
+                                                <>
+                                                    <p className="text-lg font-semibold text-expense">{account?.currency?.symbol || "$"}{rec.amount} immediately</p>
+                                                    <p className="text-xs text-text-secondary">Deadline passed - save now!</p>
+                                                </>
+                                            ) : rec.status === "urgent" ? (
+                                                <>
+                                                    <p className="text-lg font-semibold text-accounts">{account?.currency?.symbol || "$"}{rec.amount} / {rec.unit}</p>
+                                                    <p className="text-xs text-text-secondary">Save now to meet deadline!</p>
+                                                </>
+                                            ) : rec.status === "paused" ? (
+                                                <>
+                                                    <p className="text-lg font-semibold text-text-secondary">{account?.currency?.symbol || "$"}{rec.amount} when resumed</p>
+                                                    <p className="text-xs text-text-secondary">Goal is paused</p>
+                                                </>
+                                            ) : rec.status === "no-deadline" ? (
+                                                <>
+                                                    <p className="text-lg font-semibold text-main">{account?.currency?.symbol || "$"}{rec.amount} total</p>
+                                                    <p className="text-xs text-text-secondary">Set deadline for better plan</p>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <p className="text-lg font-semibold text-main">
+                                                        {account?.currency?.symbol || "$"}{rec.amount} / {rec.unit}
+                                                    </p>
+                                                    <p className="text-xs text-text-secondary">To reach your goal on time</p>
+                                                </>
+                                            )}
+                                        </div>
+
+                                        {/* Action Buttons */}
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setAddFundsModal(true);
+                                                    setSavingsID(goal.id);
+                                                    setFundsType("deposit");
+                                                }}
+                                                className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg bg-income/70 hover:bg-income transition-all duration-300"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                <span className="text-sm font-medium text-main">Add Funds</span>
+                                            </button>
+                                            <button
+                                                onClick={() => {
+                                                    setAddFundsModal(true);
+                                                    setSavingsID(goal.id);
+                                                    setFundsType("withdraw");
+                                                }}
+                                                className="cursor-pointer flex-1 flex items-center justify-center gap-2 py-2.5 border border-border rounded-lg bg-expense/70 hover:bg-expense transition-colors"
+                                            >
+                                                <Minus className="w-4 h-4" />
+                                                <span className="text-sm font-medium text-main">Withdraw</span>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
+                            );
+                        })
+                    ) : (
+                        <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                            <div className="w-16 h-16 bg-primary-gradient rounded-full flex items-center justify-center mb-4">
+                                <Plus className="w-8 h-8 text-icon" />
                             </div>
-                        );
-                    })}
-                </div>
-
-                {/* Pagination */}
-                <div className="flex justify-center items-center gap-2 mt-auto pt-6 text-sm text-text-secondary">
-                    <button className="px-2 py-1 border border-border rounded hover:bg-gray-100">Previous</button>
-                    <span className="px-3 py-1 bg-main text-white rounded">1</span>
-                    <span>2</span>
-                    <span>3</span>
-                    <button className="px-2 py-1 border border-border rounded hover:bg-gray-100">Next</button>
+                            <h3 className="text-lg font-semibold text-main mb-2">No Goals Found</h3>
+                            <p className="text-text-secondary mb-6 max-w-md">
+                                Create your first savings goal to start tracking your progress.
+                            </p>
+                            <button
+                                onClick={() => setGoalModal(true)}
+                                className="px-4 py-2 bg-button text-white rounded-lg hover:bg-hover-button transition-colors"
+                            >
+                                <Plus className="w-4 h-4 inline mr-2" />
+                                Create Goal
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
+            {/* Modals */}
             <GoalModal isOpen={goalModal} onClose={() => setGoalModal(false)} />
-            <AddFundModal isOpen={addFundsModal} onClose={() => {
-                setAddFundsModal(false);
-                setSavingsID(null);
-                setFundsType(null);
-            }}
+            <AddFundModal
+                isOpen={addFundsModal}
+                onClose={() => {
+                    setAddFundsModal(false);
+                    setSavingsID(null);
+                    setFundsType(null);
+                }}
                 savingsID={savingsID}
-                fundsType={fundsType} />
-            <EditGoalModal isOpen={editGoalModal} onClose={() => {
-                setSavingsID(null);
-                setEditGoalModal(false)
-            }} ID={savingsID} />
+                fundsType={fundsType}
+            />
+            <EditGoalModal
+                isOpen={editGoalModal}
+                onClose={() => {
+                    setSavingsID(null);
+                    setEditGoalModal(false);
+                }}
+                ID={savingsID}
+            />
+            <SavingsSummary
+                isOpen={savingsSummaryModal}
+                onClose={() => setSavingsSummaryModal(false)}
+                goals={getFilteredGoalsForSummary()}
+            />
+
+            <ConfirmModal
+                show={confirmDelete.isOpen}
+                title="Confirm Action"
+                text={`Are you sure you want to delete "${confirmDelete.savings_name}" from account "${confirmDelete.savings_name}"?`}
+                type="danger"
+                onSubmit={handleDeleteSaving}
+                onClose={() => {
+                    setConfirmDelete({
+                        isOpen: false,
+                        savings_id: null
+                    })
+                }}
+            />
         </div>
     );
 }

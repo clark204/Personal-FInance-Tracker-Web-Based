@@ -31,11 +31,32 @@ export const useBudget = (budgetID = null, filters = {}) => {
     const createBudget = useMutation({
         mutationFn: async (newData) => {
             const response = await api.post('/budgets', newData, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                validateStatus: (status) => true, // Allow handling all status codes manually
             });
-            return response.data;
+
+            // If Laravel returns an error status
+            if (response.status >= 400) {
+                return { success: false, message: response.data?.message || 'Failed to create budget' };
+            }
+
+            return { success: true, data: response.data };
         },
-        onSuccess: () => {
+        onSuccess: (res) => {
+            if (!res.success) {
+                toast.error(res.message, {
+                    position: "bottom-right",
+                    autoClose: 5000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    progress: undefined,
+                    theme: "light",
+                    transition: Bounce,
+                });
+                return;
+            }
+
             queryClient.invalidateQueries(['budgets']);
             toast.success('Budget created successfully!', {
                 position: "bottom-right",
@@ -47,8 +68,9 @@ export const useBudget = (budgetID = null, filters = {}) => {
                 theme: "light",
                 transition: Bounce,
             });
-        }
+        },
     });
+
 
     const updateBudget = useMutation({
         mutationFn: async (updateData) => {
@@ -79,7 +101,31 @@ export const useBudget = (budgetID = null, filters = {}) => {
             });
             return response.data;
         },
-        onSuccess: () => queryClient.invalidateQueries(['budgets'])
+        onSuccess: () => {
+            queryClient.invalidateQueries(['budgets']);
+            toast.success(`Budget deleted successfully!`, {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce,
+            });
+        },
+        onError: () => {
+            toast.error("Failed to delete budget. Please try again.", {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce,
+            });
+        }
     });
 
     return {

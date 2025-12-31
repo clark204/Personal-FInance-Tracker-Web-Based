@@ -92,6 +92,28 @@ export const useTransaction = (transactionID = null, filters = {}) => {
         },
         onSuccess: () => {
             queryClient.invalidateQueries(["transactions"]);
+            toast.success('Transaction successfully deleted!', {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light", 
+                transition: Bounce,
+            })
+        },
+        onError: () => {
+            toast.error("Failed to Transaction. Please try again.", {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce,
+            });
         }
     });
 

@@ -14,7 +14,7 @@ class BudgetController extends Controller
     {
         $user = $request->user()->id;
 
-        $budgetQuery = Budget::where('user_id', $user)->with(['user', 'category', 'account', 'transactions']);
+        $budgetQuery = Budget::where('user_id', $user)->with(['user', 'category', 'account.currency', 'transactions'])->orderBy('created_at', 'desc');
 
         if ($request->filled('account_id')) {
             $budgetQuery->where('account_id', $request->account_id);
@@ -51,9 +51,6 @@ class BudgetController extends Controller
     }
 
 
-    /**
-     * Store a newly created resource in storage.
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -85,7 +82,6 @@ class BudgetController extends Controller
                 break;
 
             case 'custom':
-                // If custom, keep user-provided dates
                 if (empty($validated['start_date']) || empty($validated['end_date'])) {
                     return response()->json([
                         'status' => 'error',
@@ -95,9 +91,33 @@ class BudgetController extends Controller
                 break;
         }
 
+        $userId = $request->user()->id;
+        $categoryId = $validated['category_id'];
+        $startDate = $validated['start_date'];
+        $endDate = $validated['end_date'];
+
+        // Check for overlapping budgets
+        $overlapQuery = Budget::where('user_id', $userId)
+            ->where('category_id', $categoryId)
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_date', [$startDate, $endDate])
+                    ->orWhereBetween('end_date', [$startDate, $endDate])
+                    ->orWhere(function ($q2) use ($startDate, $endDate) {
+                        $q2->where('start_date', '<=', $startDate)
+                            ->where('end_date', '>=', $endDate);
+                    });
+            });
+
+        if ($overlapQuery->exists()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'A budget already exists for this category during the selected period.'
+            ], 422);
+        }
+
         $budget = Budget::create(array_merge(
             $validated,
-            ['user_id' => $request->user()->id]
+            ['user_id' => $userId]
         ));
 
         return response()->json([
@@ -106,6 +126,7 @@ class BudgetController extends Controller
             'data' => $budget->load(['user', 'category', 'account'])
         ], 201);
     }
+
 
     /**
      * Display the specified resource.
@@ -119,7 +140,7 @@ class BudgetController extends Controller
             ], 403);
         };
 
-        return response()->json($budget->load(['user', 'category', 'transactions']));
+        return response()->json($budget->load(['category.children', 'transactions', 'account']));
     }
 
     /**
@@ -188,7 +209,7 @@ class BudgetController extends Controller
             'data' => $budget->load(['user', 'category'])
         ]);
     }
-
+    
 
 
     /**

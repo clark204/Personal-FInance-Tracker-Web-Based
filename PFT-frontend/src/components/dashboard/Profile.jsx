@@ -3,211 +3,105 @@ import {
     User,
     Mail,
     Edit,
-    Wallet,
-    TrendingUp,
-    TrendingDown,
-    CreditCard,
+    CheckCircle,
+    Calendar,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { useAccount } from "../../hooks/account";
 
 export default function Profile() {
-
-    const {user} = useAuth();
+    const { user } = useAuth();
+    const { getAccounts } = useAccount();
+    const accounts = getAccounts.data?.account || [];
+    
+    const formatDate = (dateString) => {
+        if (!dateString) return "2025";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    };
+    
+    const userSince = formatDate(user?.created_at || "2025-11-01");
 
     return (
-        <div className="h-screen overflow-auto bg-gradient-to-b from-primary-gradient to-secondary-gradient p-6 text-color-text">
-            {/* Profile Header */}
-            <div className="bg-white border border-color-border rounded-xl shadow-sm p-6 flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <div className="relative">
-                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-main to-main-light flex items-center justify-center text-white text-2xl font-bold">
-                            JD
-                        </div>
-                        <div className="absolute bottom-0 right-0 bg-white p-1 rounded-full border border-color-border">
-                            <User className="w-4 h-4 text-color-main" />
-                        </div>
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-semibold text-color-text">
-                            {user.name}
-                        </h2>
-                        <p className="flex items-center gap-2 text-color-text-secondary text-sm">
-                            <Mail className="w-4 h-4" /> {user.email}
-                        </p>
-                    </div>
-                </div>
-                <button className="bg-color-button hover:bg-color-hover-button text-white text-sm font-medium py-2 px-4 rounded-md transition">
-                    <Edit className="w-4 h-4 inline mr-1" />
-                    Edit Profile
-                </button>
-            </div>
-
-            {/* Financial Overview */}
-            <div className="bg-white border border-color-border rounded-xl shadow-sm p-6 mb-6">
-                <h3 className="font-semibold text-color-text mb-1">
-                    Financial Overview
-                </h3>
-                <p className="text-sm text-color-text-secondary mb-4">
-                    Your complete financial summary
-                </p>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {/* Total Balance */}
-                    <div className="flex items-center gap-3 bg-balance/10 border border-color-border rounded-lg p-4">
-                        <div className="bg-balance/20 text-balance p-3 rounded-full">
-                            <Wallet className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-color-text-secondary">
-                                Total Balance
-                            </p>
-                            <p className="text-xl font-semibold text-color-text">
-                                $25,770.50
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Total Income */}
-                    <div className="flex items-center gap-3 bg-income/10 border border-color-border rounded-lg p-4">
-                        <div className="bg-income/20 text-income p-3 rounded-full">
-                            <TrendingUp className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-color-text-secondary">
-                                Total Income
-                            </p>
-                            <p className="text-xl font-semibold text-income">
-                                $7,000
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Total Expenses */}
-                    <div className="flex items-center gap-3 bg-expense/10 border border-color-border rounded-lg p-4">
-                        <div className="bg-expense/20 text-expense p-3 rounded-full">
-                            <TrendingDown className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-color-text-secondary">
-                                Total Expenses
-                            </p>
-                            <p className="text-xl font-semibold text-expense">
-                                $829.99
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Active Accounts */}
-                    <div className="flex items-center gap-3 bg-accounts/10 border border-color-border rounded-lg p-4">
-                        <div className="bg-accounts/20 text-accounts p-3 rounded-full">
-                            <CreditCard className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-sm text-color-text-secondary">
-                                Active Accounts
-                            </p>
-                            <p className="text-xl font-semibold text-color-text">
-                                4
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Budgets & Transaction Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* Budgets & Goals */}
-                <div className="bg-white border border-color-border rounded-xl shadow-sm p-6">
-                    <h3 className="font-semibold text-color-text mb-4">
-                        Budgets & Goals
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between border-b border-color-border pb-2">
-                            <span className="text-color-text-secondary">
-                                Active Budgets
-                            </span>
-                            <span className="font-medium">6</span>
-                        </div>
-                        <div className="flex justify-between border-b border-color-border pb-2">
-                            <span className="text-color-text-secondary">
-                                Savings Goals
-                            </span>
-                            <span className="font-medium">4</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-color-text-secondary">
-                                Avg. Goals Progress
-                            </span>
-                            <span className="font-semibold text-color-main">
-                                59%
-                            </span>
-                        </div>
+        <div className="overflow-y-auto bg-gradient-to-br from-primary-gradient to-secondary-gradient p-4 md:p-6">
+            <div className="max-w-6xl mx-auto">
+                {/* Modern Header */}
+                <div className="mb-8">
+                    <div className="bg-gradient-to-r from-main to-main-light rounded-2xl p-6 md:p-8 text-white">
+                        <h1 className="text-3xl md:text-4xl font-bold mb-2">Profile Settings</h1>
+                        <p className="text-white/90">Manage your account information and preferences</p>
                     </div>
                 </div>
 
-                {/* Transaction History */}
-                <div className="bg-white border border-color-border rounded-xl shadow-sm p-6">
-                    <h3 className="font-semibold text-color-text mb-4">
-                        Transaction History
-                    </h3>
-                    <div className="space-y-2 text-sm">
-                        <div className="flex justify-between border-b border-color-border pb-2">
-                            <span className="text-color-text-secondary">
-                                Total Transactions
-                            </span>
-                            <span className="font-medium">15</span>
-                        </div>
-                        <div className="flex justify-between border-b border-color-border pb-2">
-                            <span className="text-color-text-secondary">
-                                This Month
-                            </span>
-                            <span className="font-medium">15</span>
-                        </div>
-                        <div className="flex justify-between">
-                            <span className="text-color-text-secondary">
-                                Savings Rate
-                            </span>
-                            <span className="font-semibold text-income">
-                                88.1%
-                            </span>
+                {/* Personal Information Card - Only Content */}
+                <div className="bg-white rounded-2xl shadow-lg border border-color-border overflow-hidden">
+                    {/* Card Header */}
+                    <div className="bg-gradient-to-r from-main/5 to-main-light/5 border-b border-color-border/30 p-6">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="p-3 bg-gradient-to-br from-main to-main-light rounded-xl">
+                                    <User className="w-6 h-6 text-white" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-color-text">Personal Information</h2>
+                                    <p className="text-sm text-color-text-secondary">Your profile details</p>
+                                </div>
+                            </div>
+                            <button className="flex items-center gap-2 px-5 py-2.5 bg-button text-white font-semibold rounded-lg hover:bg-hover-button transition-colors">
+                                <Edit className="w-4 h-4" />
+                                Edit Profile
+                            </button>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            {/* Account Preferences */}
-            <div className="bg-white border border-color-border rounded-xl shadow-sm p-6">
-                <h3 className="font-semibold text-color-text mb-4">
-                    Account Preferences
-                </h3>
-                <div className="text-sm space-y-2">
-                    <div className="flex justify-between border-b border-color-border pb-2">
-                        <span className="text-color-text-secondary">
-                            Preferred Currency
-                        </span>
-                        <span className="font-medium">USD</span>
-                    </div>
-                    <div className="flex justify-between border-b border-color-border pb-2">
-                        <span className="text-color-text-secondary">
-                            Date Format
-                        </span>
-                        <span className="font-medium">MM/DD/YYYY</span>
-                    </div>
-                    <div className="flex justify-between border-b border-color-border pb-2">
-                        <span className="text-color-text-secondary">
-                            Email Notifications
-                        </span>
-                        <span className="font-medium text-income">
-                            Enabled
-                        </span>
-                    </div>
-                    <div className="flex justify-between">
-                        <span className="text-color-text-secondary">
-                            Budget Alerts
-                        </span>
-                        <span className="font-medium text-income">
-                            Enabled
-                        </span>
+                    
+                    {/* Card Content */}
+                    <div className="p-6">
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
+                            {/* Avatar */}
+                            <div className="relative">
+                                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-main to-main-light flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+                                    {user?.name?.charAt(0).toUpperCase() || "U"}
+                                </div>
+                                <div className="absolute -bottom-2 -right-2 bg-white p-2 rounded-full border-4 border-white outline">
+                                    <Edit className="w-4 h-4 text-color-text" />
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-6 flex-1">
+                                {/* Info Grid */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-semibold text-color-text-secondary uppercase tracking-wider">Full Name</label>
+                                        <div className="px-4 py-3 bg-gray-50 rounded-lg border border-color-border/30">
+                                            <p className="text-lg font-semibold text-color-text">{user?.name || "Not set"}</p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="block text-xs font-semibold text-color-text-secondary uppercase tracking-wider">Email Address</label>
+                                        <div className="px-4 py-3 bg-gray-50 rounded-lg border border-color-border/30 flex items-center gap-3">
+                                            <Mail className="w-5 h-5 text-color-text-secondary" />
+                                            <p className="text-lg font-semibold text-color-text">{user?.email || "No email"}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* Status Badges */}
+                                <div className="flex flex-wrap gap-2">
+                                    <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-100 text-emerald-800 text-sm font-medium rounded-full">
+                                        <CheckCircle className="w-4 h-4" />
+                                        Verified Account
+                                    </span>
+                                    <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                                        <Calendar className="w-4 h-4" />
+                                        Since {userSince}
+                                    </span>
+                                    <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-100 text-purple-800 text-sm font-medium rounded-full">
+                                        <User className="w-4 h-4" />
+                                        {accounts.length} Account{accounts.length !== 1 ? 's' : ''}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

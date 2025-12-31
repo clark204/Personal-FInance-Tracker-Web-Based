@@ -1,16 +1,33 @@
-import React, { useState } from "react";
-import { Plus, Filter, ChevronDown, Trash2, CheckCircle, SquarePen } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, Filter, ChevronDown, Trash2, CheckCircle, SquarePen, Search, Calendar, Wallet, Tag, Loader, PieChart } from "lucide-react";
 import { useMediaQuery } from "react-responsive";
-import BudgetModal from "../modal/BudgetModal";
+import BudgetModal from "../modal/budget/BudgetModal";
 import { useBudget } from "../../hooks/budget";
-import EditBudgetModal from "../modal/EditBudgetModal";
-import BudgetTransactionsModal from "../modal/BudgetTransactionsModal";
-import { useAccount } from "../../hooks/account";
+import EditBudgetModal from "../modal/budget/EditBudgetModal";
+import BudgetTransactionsModal from "../modal/budget/BudgetTransactionsModal";
 import CategoryFilter from "../common/CategoryFilter";
 import AccountFilter from "../common/AccountFilter";
 import PeriodSelect from "../common/PeriodSelect";
+import BudgetSummary from "../modal/budget/BudgetSummary";
+import ConfirmModal from "../common/confirmModal"; // Add this import
 
 export default function Budget() {
+    const mobileVP = useMediaQuery({ maxWidth: 768 });
+    const [showFilters, setShowFilters] = useState(true);
+    const [budgetModal, setBudgetModal] = useState(false);
+    const [editBudgetModal, setEditBudgetModal] = useState(false);
+    const [budgetTransactionsModal, setBudgetTransactionsModal] = useState(false);
+    const [budgetID, setBudgetID] = useState(null);
+    const [isLoadingState, setIsLoadingState] = useState(true);
+    const [budgetSummaryModal, setBudgetSummaryModal] = useState(false);
+    
+    // Add confirm delete state
+    const [confirmDelete, setConfirmDelete] = useState({
+        isOpen: false,
+        budgetId: null,
+        budgetName: "",
+        accountName: ""
+    });
 
     const [filters, setFilters] = useState({
         account_id: "",
@@ -20,7 +37,12 @@ export default function Budget() {
         date_from: "",
         page: 1,
         date_to: "",
+        search: "",
     });
+
+    // Add delete mutation
+    const { getBudgets, deleteBudget } = useBudget(null, filters);
+    const budgets = getBudgets.data?.data || [];
 
     const updateFilter = (field, value) => {
         setFilters((prev) => ({
@@ -28,31 +50,57 @@ export default function Budget() {
             [field]: value,
             page: field === "page" ? value : 1
         }));
+        // Reset loading state when filters change
+        setIsLoadingState(true);
     };
 
-    const mobileVP = useMediaQuery({ maxWidth: 768 });
-    const [isFiltersOpen, setIsFiltersOpen] = useState(true);
+    // Handle loading state
+    useEffect(() => {
+        if (getBudgets.data || getBudgets.error) {
+            setIsLoadingState(false);
+        }
+    }, [getBudgets.data, getBudgets.error]);
 
-    const [budgetModal, setBudgetModal] = useState(false);
-    const [editBudgetModal, setEditBudgetModal] = useState(false);
-    const [budgetTransactionsModal, setBudgetTransactionsModal] = useState(false);
-    const [budgetID, setBudgetID] = useState(null);
+    // Handle delete budget
+    const handleDeleteBudget = async () => {
+        if (confirmDelete.budgetId) {
+            await deleteBudget.mutateAsync(confirmDelete.budgetId);
+            setConfirmDelete({ 
+                isOpen: false, 
+                budgetId: null, 
+                budgetName: "", 
+                accountName: "" 
+            });
+        }
+    };
 
-    const { getBudgets } = useBudget(null, filters);
-    const budgets = getBudgets.data?.data || [];
+    // Open delete confirmation
+    const openDeleteConfirmation = (budgetId, budgetName, accountName) => {
+        setConfirmDelete({
+            isOpen: true,
+            budgetId,
+            budgetName: budgetName || "this budget",
+            accountName: accountName || ""
+        });
+    };
+
+    // Determine if we should show loading
+    const showLoading = isLoadingState && budgets.length === 0;
 
     const statusColor = (status) => {
         switch (status) {
             case "ontrack":
-                return "text-[#109442] bg-[#C9F5D9]";
+                return "text-white bg-income";
             case "completed":
-                return "text-[#0B2027] bg-[#FAFDED]";
-            case "Overspend":
-                return "text-[#F44336] bg-[#FCD6D3]";
-            case "Expired":
-                return "text-gray-600 bg-gray-200";
+                return "text-white bg-main";
+            case "overbudget":
+                return "text-white bg-expense";
+            case "overdue":
+                return "text-white bg-accounts";
+            case "pending":
+                return "text-white bg-border";
             default:
-                return "text-slate-600 bg-slate-200";
+                return "text-white bg-main-light";
         }
     };
 
@@ -66,12 +114,6 @@ export default function Budget() {
             updateFilter("datePreset", "all");
             return;
         }
-
-        // if (preset === "today") {
-        //     start.setHours(0, 0, 0, 0);
-        //     updateFilter("date_from", start.toISOString().slice(0, 10));
-        //     updateFilter("date_to", now.toISOString().slice(0, 10));
-        // }
 
         if (preset === "week") {
             start.setDate(now.getDate() - now.getDay());
@@ -99,226 +141,475 @@ export default function Budget() {
         updateFilter("datePreset", preset);
     }
 
-    return (
-        <div className="h-screen p-4 sm:p-6 bg-linear-to-b from-primary-gradient to-secondary-gradient overflow-auto">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-md border border-border">
-                <div>
-                    <h1 className="text-2xl font-semibold text-main">Budgets</h1>
-                    <p className="text-text-secondary text-sm">Overview of your current spending</p>
+    function formatDate(dateString) {
+        if (!dateString) return "No date";
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+
+    // Check if an account is selected
+    const isAccountSelected = () => {
+        return filters.account_id !== "" && filters.account_id !== null;
+    };
+
+    // Get filtered budgets for the selected account only
+    const getFilteredBudgetsForSummary = () => {
+        if (!isAccountSelected()) {
+            return [];
+        }
+        return budgets.filter(budget => budget.account_id === parseInt(filters.account_id));
+    };
+
+    // Loading component for cards
+    const LoadingCard = () => (
+        <div className="bg-white border border-border rounded-xl shadow-sm p-5 flex flex-col animate-pulse">
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="h-6 w-24 bg-gray-200 rounded"></div>
+                        <div className="h-5 w-16 bg-gray-200 rounded-full"></div>
+                    </div>
+                    <div className="h-4 w-32 bg-gray-200 rounded"></div>
                 </div>
-                <button
-                    onClick={() => setBudgetModal(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-button text-white rounded-md hover:bg-hover-button transition"
-                >
-                    <Plus className="w-4 h-4" />
-                    Add Budget
-                </button>
+                <div className="flex gap-2">
+                    <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                    <div className="h-8 w-8 bg-gray-200 rounded-lg"></div>
+                </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white p-4 rounded-xl shadow-md border border-border mb-6">
-                <div className="w-full flex justify-between items-center mb-4">
-                    <div className="flex items-center gap-2">
-                        <Filter className={`text-icon ${mobileVP ? "w-4 h-4" : "w-5 h-5"}`} />
-                        <h2 className={`font-semibold ${mobileVP ? "text-base" : "text-lg"}`}>Filters</h2>
-                    </div>
+            <div className="mb-4">
+                <div className="flex justify-between mb-2">
+                    <div className="h-4 w-16 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-24 bg-gray-200 rounded"></div>
+                </div>
+                <div className="w-full h-2 bg-gray-200 rounded-full mb-2"></div>
+                <div className="flex justify-between">
+                    <div className="h-4 w-20 bg-gray-200 rounded"></div>
+                    <div className="h-4 w-10 bg-gray-200 rounded"></div>
+                </div>
+            </div>
 
+            <div className="mt-auto pt-4 border-t border-gray-200">
+                <div className="flex justify-between">
+                    <div className="text-center">
+                        <div className="h-3 w-12 bg-gray-200 rounded mx-auto mb-1"></div>
+                        <div className="h-5 w-10 bg-gray-200 rounded mx-auto"></div>
+                    </div>
+                    <div className="text-center">
+                        <div className="h-3 w-12 bg-gray-200 rounded mx-auto mb-1"></div>
+                        <div className="h-5 w-10 bg-gray-200 rounded mx-auto"></div>
+                    </div>
+                    <div className="text-center">
+                        <div className="h-3 w-16 bg-gray-200 rounded mx-auto mb-1"></div>
+                        <div className="h-5 w-10 bg-gray-200 rounded mx-auto"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="h-screen p-4 sm:p-6 bg-gradient-to-b from-primary-gradient to-secondary-gradient overflow-auto">
+            {/* HEADER SECTION */}
+            <div className="mb-6">
+                <div className="flex justify-between items-center">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-bold text-main mb-2">Budgets</h1>
+                        <p className="text-text-secondary">
+                            Track and manage your spending limits
+                        </p>
+                    </div>
                     <button
-                        onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                        className="flex items-center text-sm text-text hover:font-medium cursor-pointer transition"
+                        onClick={() => setBudgetModal(true)}
+                        className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-button text-white rounded-lg hover:bg-hover-button transition-colors"
                     >
-                        {isFiltersOpen ? "Hide" : "Show"}
-                        <ChevronDown
-                            className={`ml-1 transition-transform  ${isFiltersOpen ? "rotate-180" : ""} 
-                        ${mobileVP ? "w-3 h-3" : "w-4 h-4"}`}
-                        />
+                        <Plus className="w-4 h-4" />
+                        Add Budget
                     </button>
                 </div>
+            </div>
 
-                {/* Collapsible Content */}
-                {isFiltersOpen && (
-                    <div
-                        className={` ${isFiltersOpen ? "max-h-[600px]" : "max-h-0"} `}
-                    >
-                        <div
-                            className=" grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 "
+            {/* FILTERS CARD */}
+            <div className="bg-white rounded-xl shadow-lg border border-border mb-6 overflow-hidden">
+                <div className="p-4 md:p-6">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-secondary-gradient rounded-lg">
+                                <Filter className="w-5 h-5 text-icon" />
+                            </div>
+                            <h2 className="text-lg font-semibold text-main">Filters</h2>
+                        </div>
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="cursor-pointer flex items-center gap-1 text-sm text-text-secondary hover:text-main transition-colors"
                         >
-                            {/* Account */}
-                            <AccountFilter
-                                selectedAccount={filters.account_id}
-                                onSelect={(value) => updateFilter("account_id", value)}
-                            />
+                            {showFilters ? "Hide Filters" : "Show Filters"}
+                            <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? "rotate-180" : ""}`} />
+                        </button>
+                    </div>
 
-                            {/* Category */}
-                            <CategoryFilter
-                                selectedCategory={filters.category_id}
-                                onSelect={(value) => updateFilter("category_id", value)}
-                            />
+                    {/* FILTERS CONTENT */}
+                    {showFilters && (
+                        <div className="animate-fadeIn">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                                {/* Search */}
+                                <div className="md:col-span-2">
+                                    <label className="text-sm font-medium text-main mb-2 block">Search</label>
+                                    <div className="relative">
+                                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary w-4 h-4" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search budgets..."
+                                            value={filters.search}
+                                            onChange={(e) => updateFilter("search", e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2.5 border border-border bg-white rounded-lg focus:outline-none focus:ring-2 focus:ring-focus focus:border-transparent transition"
+                                        />
+                                    </div>
+                                </div>
 
-                            {/* Status */}
-                            <div>
-                                <label className="text-sm text-text block mb-1">Status</label>
-                                <select className="w-full px-3 py-2 border border-border rounded-lg"
-                                    value={filters.status}
-                                    onChange={(e) => updateFilter("status", e.target.value)}
-                                >
-                                    <option value="">All status</option>
-                                    <option value="ontrack">On Track</option>
-                                    <option value="overspend">Overspend</option>
-                                    <option value="overdue">Overdue</option>
-                                    <option value="completed">Completed</option>
-                                </select>
+                                {/* Account Filter */}
+                                <div>
+                                    <label className="text-sm font-medium text-main mb-2 flex items-center gap-2">
+                                        <Wallet className="w-4 h-4" />
+                                        Account
+                                    </label>
+                                    <AccountFilter
+                                        selectedAccount={filters.account_id}
+                                        onSelect={(value) => updateFilter("account_id", value)}
+                                    />
+                                </div>
+
+                                {/* Category Filter */}
+                                <div>
+                                    <label className="text-sm font-medium text-main mb-2 flex items-center gap-2">
+                                        <Tag className="w-4 h-4" />
+                                        Category
+                                    </label>
+                                    <CategoryFilter
+                                        selectedCategory={filters.category_id}
+                                        onSelect={(value) => updateFilter("category_id", value)}
+                                    />
+                                </div>
                             </div>
 
-                            {/* Period */}
-                            <PeriodSelect
-                                datePreset={filters.datePreset}
-                                dateFrom={filters.date_from}
-                                dateTo={filters.date_to}
-                                onPresetChange={applyPreset}
-                                onDateFromChange={(value) => updateFilter("date_from", value)}
-                                onDateToChange={(value) => updateFilter("date_to", value)}
-                            />
-                        </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                {/* Status Filter */}
+                                <div>
+                                    <label className="text-sm font-medium text-main mb-2">Status</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={() => updateFilter("status", "")}
+                                            className={`cursor-pointer flex-1 min-w-20 px-3 py-2.5 rounded-lg border transition text-sm ${!filters.status ? 'bg-button text-white border-button' : 'bg-white border-border text-main hover:border-button'}`}
+                                        >
+                                            All
+                                        </button>
+                                        <button
+                                            onClick={() => updateFilter("status", "ontrack")}
+                                            className={`cursor-pointer flex-1 min-w-20 px-3 py-2.5 rounded-lg border transition text-sm ${filters.status === "ontrack" ? 'bg-income text-white border-income' : 'bg-white border-border text-main hover:border-income'}`}
+                                        >
+                                            On Track
+                                        </button>
+                                        <button
+                                            onClick={() => updateFilter("status", "overbudget")}
+                                            className={`cursor-pointer flex-1 min-w-20 px-3 py-2.5 rounded-lg border transition text-sm ${filters.status === "overbudget" ? 'bg-expense text-white border-expense' : 'bg-white border-border text-main hover:border-expense'}`}
+                                        >
+                                            Over Budget
+                                        </button>
+                                        <button
+                                            onClick={() => updateFilter("status", "overdue")}
+                                            className={`cursor-pointer flex-1 min-w-20 px-3 py-2.5 rounded-lg border transition text-sm ${filters.status === "overdue" ? 'bg-accounts text-white border-accounts' : 'bg-white border-border text-main hover:border-accounts'}`}
+                                        >
+                                            Overdue
+                                        </button>
+                                        <button
+                                            onClick={() => updateFilter("status", "completed")}
+                                            className={`cursor-pointer flex-1 min-w-20 px-3 py-2.5 rounded-lg border transition text-sm ${filters.status === "completed" ? 'bg-main text-white border-main' : 'bg-white border-border text-main hover:border-main'}`}
+                                        >
+                                            Completed
+                                        </button>
+                                    </div>
+                                </div>
 
-                        {/* Clear FIlter Actions */}
-                        <div className="flex justify-end pt-4 border-t mt-4">
+                                {/* Date Presets */}
+                                <div className="md:col-span-2">
+                                    <label className="text-sm font-medium text-main mb-2 flex items-center gap-2">
+                                        <Calendar className="w-4 h-4" />
+                                        Period
+                                    </label>
+                                    <PeriodSelect
+                                        datePreset={filters.datePreset}
+                                        dateFrom={filters.date_from}
+                                        dateTo={filters.date_to}
+                                        onPresetChange={applyPreset}
+                                        onDateFromChange={(value) => updateFilter("date_from", value)}
+                                        onDateToChange={(value) => updateFilter("date_to", value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between items-center pt-4 border-t border-border">
+                                <span className="text-sm text-text-secondary">
+                                    {showLoading ? (
+                                        <div className="flex items-center gap-2">
+                                            <Loader className="w-4 h-4 animate-spin" />
+                                            Loading...
+                                        </div>
+                                    ) : (
+                                        `${budgets.length} budgets found`
+                                    )}
+                                </span>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => {
+                                            setFilters({
+                                                search: '',
+                                                account_id: '',
+                                                category_id: '',
+                                                status: '',
+                                                datePreset: 'all',
+                                                date_from: '',
+                                                date_to: '',
+                                                page: 1
+                                            });
+                                        }}
+                                        className="cursor-pointer px-5 py-2 text-sm font-medium rounded-lg border border-border text-text-secondary hover:border-expense hover:text-expense transition-colors"
+                                    >
+                                        Clear Filters
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* BUDGET CARDS CONTAINER */}
+            <div className="bg-white rounded-xl shadow-lg border border-border overflow-hidden">
+                <div className="p-5 border-b border-border">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-main">
+                            Your Budgets ({showLoading ? "..." : budgets.length})
+                        </h2>
+
+                        <div className="flex items-center gap-4">
+                            {/* Show Budget Summary button only when an account is selected */}
+                            {isAccountSelected() && (
+                                <button
+                                    onClick={() => setBudgetSummaryModal(true)}
+                                    className="cursor-pointer flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border border-border text-main hover:border-button hover:bg-button hover:text-white transition-colors"
+                                >
+                                    <PieChart className="w-4 h-4" />
+                                    Budget Summary
+                                </button>
+                            )}
+                            <span className="text-sm text-text-secondary">
+                                {showLoading ? (
+                                    <div className="flex items-center gap-2">
+                                        <Loader className="w-4 h-4 animate-spin" />
+                                        Loading budgets...
+                                    </div>
+                                ) : (
+                                    `Showing ${budgets.length} budgets`
+                                )}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Budget Cards Grid */}
+                <div className={`grid ${mobileVP ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"} gap-5 p-5`}>
+                    {showLoading ? (
+                        // Loading state
+                        Array.from({ length: 6 }).map((_, index) => (
+                            <LoadingCard key={index} />
+                        ))
+                    ) : budgets.length > 0 ? (
+                        budgets.map((budget) => {
+                            const amount = Number(budget.budget_amount) || 0;
+                            const spent = Number(budget.budget_spent) || 0;
+                            const progress = Math.min((spent / amount) * 100, 100);
+                            const remaining = amount - spent;
+                            const isOver = remaining < 0;
+                            const dailyAvg = spent / 20;
+
+                            return (
+                                <div
+                                    key={budget.id}
+                                    className="bg-white border border-border rounded-xl shadow-sm hover:shadow-lg transition-all p-5 flex flex-col hover:scale-102"
+                                >
+                                    {/* Header */}
+                                    <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <h3 className="text-lg font-semibold text-main">{budget.category?.category_name}</h3>
+                                                <span
+                                                    className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor(
+                                                        budget.status
+                                                    )}`}
+                                                >
+                                                    {budget.status}
+                                                </span>
+                                            </div>
+
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => {
+                                                    setEditBudgetModal(true);
+                                                    setBudgetID(budget.id);
+                                                }}
+                                                className="cursor-pointer p-2 text-edit hover:bg-edit/10 rounded-lg transition-colors"
+                                                title="Edit Budget"
+                                            >
+                                                <SquarePen className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => openDeleteConfirmation(
+                                                    budget.id, 
+                                                    budget.category?.category_name || "Uncategorized Budget",
+                                                    budget.account?.account_name || "Unknown Account"
+                                                )}
+                                                className="cursor-pointer p-2 text-expense hover:bg-expense/10 rounded-lg transition-colors"
+                                                title="Delete Budget"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 text-sm text-text-secondary mb-2 mt-2">
+                                        <span className="font-medium text-text bg-blue-300 px-1 py-0.5 rounded-md">{budget.account?.account_name}</span>
+                                        <span>•</span>
+                                        <span>{formatDate(budget.start_date)} - {formatDate(budget.end_date)}</span>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div className="mb-4">
+                                        <div className="flex justify-between items-center text-sm mb-2">
+                                            <span className="text-text">Spent</span>
+                                            <span className="font-semibold text-main">
+                                                ${spent.toFixed(2)} / ${budget.budget_amount}
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-gray-200 border border-gray-400 rounded-full h-2 mb-2 overflow-hidden">
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-300 bg-linear-to-r from-main-light to-income`}
+                                                style={{ width: `${Math.min(progress, 100)}%` }}
+                                            ></div>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-text">
+                                                {progress.toFixed(1)}%
+                                            </span>
+                                            <span className={`font-medium text-main`}>
+                                                {isOver
+                                                    ? `$${Math.abs(remaining).toFixed(2)} over`
+                                                    : `$${remaining.toFixed(2)} remaining`
+                                                }
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Stats Footer */}
+                                    <div className="mt-auto pt-4 border-t border-border">
+                                        <div className="flex justify-between items-center text-sm">
+                                            <div className="text-center">
+                                                <p className="text-text-secondary text-xs">Progress</p>
+                                                <p className="font-semibold text-main">{progress.toFixed(1)}%</p>
+                                            </div>
+                                            <div className="text-center">
+                                                <p className="text-text-secondary text-xs">Daily Avg</p>
+                                                <p className="font-semibold text-main">${dailyAvg.toFixed(2)}</p>
+                                            </div>
+                                            <button
+                                                onClick={() => {
+                                                    setBudgetTransactionsModal(true);
+                                                    setBudgetID(budget.id);
+                                                }}
+                                                className="cursor-pointer text-center rounded-lg p-2 transition-all duration-300 bg-main-light/90 hover:bg-main"
+                                            >
+                                                <p className="text-xs text-white">
+                                                    Transactions
+                                                </p>
+                                                <p className="font-semibold text-white">
+                                                    {budget.transactions?.length || 0}
+                                                </p>
+                                            </button>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    ) : (
+                        <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+                            <div className="w-16 h-16 bg-primary-gradient rounded-full flex items-center justify-center mb-4">
+                                <CheckCircle className="w-8 h-8 text-icon" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-main mb-2">No Budgets Found</h3>
+                            <p className="text-text-secondary mb-6 max-w-md">
+                                Create your first budget to start tracking your spending against limits.
+                            </p>
                             <button
-                                onClick={() => {
-                                    // Reset all filters to default values
-                                    setFilters({
-                                        account_id: '',
-                                        category_id: '',
-                                        status: '',
-                                        datePreset: '', // or whatever your default preset is
-                                        date_from: '',
-                                        date_to: ''
-                                    });
-                                }}
-                                className="px-5 text-sm hover:font-medium rounded-lg  text-text/70
-                             hover:text-red-500 transition cursor-pointer"
+                                onClick={() => setBudgetModal(true)}
+                                className="cursor-pointer px-4 py-2 bg-button text-white rounded-lg hover:bg-hover-button transition-colors"
                             >
-                                Clear Filters
+                                <Plus className="w-4 h-4 inline mr-2" />
+                                Create Budget
                             </button>
                         </div>
-                    </div>
-                )}
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-md border border-border min-h-[450px] flex flex-col">
-                {/* Budget Cards */}
-                <div className={`grid ${mobileVP ? "grid-cols-1" : "md:grid-cols-2 lg:grid-cols-3"} gap-5 overflow-auto`}>
-                    {budgets.map((budget) => {
-                        const amount = Number(budget.budget_amount) || 0;
-                        const spent = Number(budget.budget_spent) || 0;
-
-                        const progress = Math.min((spent / amount) * 100, 100);
-                        const remaining = amount - spent;
-                        const isOver = remaining < 0;
-
-                        return (
-                            <div
-                                key={budget.id}
-                                className="bg-white border border-border rounded-xl shadow-sm hover:shadow-lg transition p-5 flex flex-col"
-                            >
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <h3 className="text-lg font-medium text-text">{budget.account?.account_name}</h3>
-                                        <h3 className="text-md font-semibold text-text">{budget.category?.category_name}</h3>
-                                        <p className="text-sm text-text-secondary">{budget.start_date} - {budget.end_date}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <span
-                                            className={`px-2 py-1 text-xs font-medium rounded-full ${statusColor(
-                                                budget.status
-                                            )}`}
-                                        >
-                                            {budget.status}
-                                        </span>
-                                        <SquarePen
-                                            onClick={() => {
-                                                setEditBudgetModal(true);
-                                                setBudgetID(budget.id);
-                                            }}
-                                            className="w-4 h-4 text-edit hover:text-blue-700 cursor-pointer" size={18} />
-                                        <Trash2 className="w-4 h-4 text-expense cursor-pointer hover:text-red-700 transition" size={18} />
-                                    </div>
-                                </div>
-
-                                {/* PROGRESS */}
-                                <div className="mt-4">
-                                    <p className="text-sm text-text/70 mb-1">Spent</p>
-                                    <div className="flex justify-between items-center text-sm mb-1">
-                                        <span className="text-text font-semibold">
-                                            ${spent.toFixed(2)} of ${budget.budget_amount}
-                                        </span>
-                                    </div>
-                                    <div className="w-full bg-border rounded-full h-2 mt-1 mb-2">
-                                        <div
-                                            className="bg-linear-to-r from-main-light to-income h-2 rounded-full"
-                                            style={{ width: `${progress}%` }}
-                                        ></div>
-                                    </div>
-                                    <p className="text-sm text-text-secondary">
-                                        {isOver
-                                            ? `$${Math.abs(remaining).toFixed(2)} over`
-                                            : `$${remaining.toFixed(2)} remaining`}
-                                    </p>
-                                </div>
-
-                                <hr className="my-1 border-border" />
-
-                                <div className="flex justify-between text-xs text-text-secondary">
-                                    <div>
-                                        <span>Progress</span>
-                                        <p className="text-text font-medium text-center">{progress.toFixed(1)}%</p>
-                                    </div>
-                                    <div>
-                                        <span>Daily Avg</span>
-                                        <p className="text-text font-medium text-center">
-                                            ${(spent / 20).toFixed(2)}
-                                        </p>
-                                    </div>
-                                    <div
-                                        className="text-center cursor-pointer"
-                                        onClick={() => {
-                                            setBudgetTransactionsModal(true);
-                                            setBudgetID(budget.id);
-                                        }}
-                                    >
-                                        <span>Transactions</span>
-                                        <p className="text-text font-medium">{budget.transactions?.length}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Pagination */}
-                <div className="flex justify-center items-center gap-2 mt-auto pt-6 text-sm text-text-secondary">
-                    <button className="px-2 py-1 border border-border rounded hover:bg-primary-gradient/40 transition">
-                        Previous
-                    </button>
-                    <span className="px-3 py-1 bg-main text-white rounded">1</span>
-                    <span>2</span>
-                    <span>3</span>
-                    <button className="px-2 py-1 border border-border rounded hover:bg-primary-gradient/40 transition">
-                        Next
-                    </button>
+                    )}
                 </div>
             </div>
 
+            {/* Modals */}
             <BudgetModal isOpen={budgetModal} onClose={() => setBudgetModal(false)} />
-            <EditBudgetModal isOpen={editBudgetModal} onClose={() => {
-                setEditBudgetModal(false);
-                setBudgetID(null);
-            }} budgetID={budgetID} />
-            <BudgetTransactionsModal budgetID={budgetID} onClose={() => {
-                setBudgetTransactionsModal(false);
-                setBudgetID(null);
-            }} isOpen={budgetTransactionsModal} />
-        </div >
+            <EditBudgetModal
+                isOpen={editBudgetModal}
+                onClose={() => {
+                    setEditBudgetModal(false);
+                    setBudgetID(null);
+                }}
+                budgetID={budgetID}
+            />
+            <BudgetTransactionsModal
+                budgetID={budgetID}
+                onClose={() => {
+                    setBudgetTransactionsModal(false);
+                    setBudgetID(null);
+                }}
+                isOpen={budgetTransactionsModal}
+            />
+
+            <BudgetSummary
+                isOpen={budgetSummaryModal}
+                onClose={() => setBudgetSummaryModal(false)}
+                budgets={getFilteredBudgetsForSummary()}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <ConfirmModal
+                show={confirmDelete.isOpen}
+                title="Delete Budget"
+                text={`Are you sure you want to delete the budget "${confirmDelete.budgetName}" from account "${confirmDelete.accountName}"?`}
+                confirmText="Delete"
+                cancelText="Cancel"
+                type="danger"
+                destructive={true}
+                isLoading={deleteBudget.isLoading}
+                onSubmit={handleDeleteBudget}
+                onClose={() => setConfirmDelete({ 
+                    isOpen: false, 
+                    budgetId: null, 
+                    budgetName: "", 
+                    accountName: "" 
+                })}
+            />
+        </div>
     );
 }

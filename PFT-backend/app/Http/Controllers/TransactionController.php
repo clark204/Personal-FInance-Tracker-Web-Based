@@ -18,7 +18,7 @@ class TransactionController extends Controller
     {
         $user = $request->user();
 
-        $transactionQuery = Transaction::where('user_id', $user->id)->with(['account', 'category'])->orderBy('created_at', 'desc');
+        $transactionQuery = Transaction::where('user_id', $user->id)->with(['account.currency', 'category'])->orderBy('created_at', 'desc');
 
         if ($request->filled('search')) {
             $searchTerm = $request->search;

@@ -15,7 +15,7 @@ class SavingsController extends Controller
     {
         $user = $request->user();
 
-        $savingsQuery = Savings::where('user_id', $user->id)->with(['account'])->orderBy('created_at', 'desc');
+        $savingsQuery = Savings::where('user_id', $user->id)->with(['account.currency'])->orderBy('created_at', 'desc');
 
         if ($request->filled("search")) {
             $searchTerm = $request->search;

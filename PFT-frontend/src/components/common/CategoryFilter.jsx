@@ -56,8 +56,6 @@ export default function CategoryFilter({ selectedCategory, onSelect }) {
 
     return (
         <div className="flex flex-col relative">
-            <label className="text-sm text-text block mb-1">Category</label>
-            
             {/* MAIN CATEGORY SELECT - ALWAYS VISIBLE */}
             <div className="relative">
                 <select

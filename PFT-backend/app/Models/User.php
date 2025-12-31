@@ -10,7 +10,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-class User extends Authenticatable implements JWTSubject , MustVerifyEmail
+class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
@@ -24,6 +24,9 @@ class User extends Authenticatable implements JWTSubject , MustVerifyEmail
         'name',
         'email',
         'password',
+        'email_notifications',
+        'budget_alerts',
+        'savings_alerts',
     ];
 
     /**
@@ -41,13 +44,13 @@ class User extends Authenticatable implements JWTSubject , MustVerifyEmail
      *
      * @return array<string, string>
      */
-    protected function casts(): array
-    {
-        return [
-            'email_verified_at' => 'datetime',
-            'password' => 'hashed',
-        ];
-    }
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'email_notifications' => 'boolean',
+        'budget_alerts' => 'boolean',
+        'savings_alerts' => 'boolean',
+    ];
 
     public function getJWTIdentifier()
     {
@@ -59,15 +62,18 @@ class User extends Authenticatable implements JWTSubject , MustVerifyEmail
         return [];
     }
 
-    public function accounts(){
+    public function accounts()
+    {
         return $this->hasMany(Account::class);
     }
 
-    public function savings(){
+    public function savings()
+    {
         return $this->hasMany(Savings::class);
     }
 
-    public function budgets(){
+    public function budgets()
+    {
         return $this->hasMany(Budget::class);
     }
 }

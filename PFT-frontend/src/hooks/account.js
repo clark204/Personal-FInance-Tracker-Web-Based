@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import api from "../api/api";
+import { Bounce, toast } from "react-toastify";
 
 export const useAccount = (accountID) => {
     const token = localStorage.getItem('token');
@@ -58,7 +59,31 @@ export const useAccount = (accountID) => {
 
             return response.data;
         },
-        onSuccess: () => queryClient.invalidateQueries(['accounts'])
+        onSuccess: () => {
+            queryClient.invalidateQueries(['accounts']);
+            toast.success(`Account deleted successfully!`, {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce,
+            });
+        },
+        onError: () => {
+            toast.error("Failed to delete account. Please try again.", {
+                position: "bottom-right",
+                autoClose: 5000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                progress: undefined,
+                theme: "light",
+                transition: Bounce,
+            });
+        }
     });
 
     return {

@@ -16,11 +16,10 @@ export default function PeriodSelect({
         <>
             {/* PERIOD SELECT */}
             <div>
-                <label className="text-sm text-text block mb-1">Period</label>
                 <select
                     value={datePreset}
                     onChange={(e) => onPresetChange(e.target.value)}
-                    className="w-full px-3 py-2 border border-border rounded-lg bg-white"
+                    className="w-full px-3 py-2 border border-border rounded-lg bg-white focus:ring-2 focus:ring-focus outline-none"
                 >
                     <option value="all">All time</option>
                     <option value="week">This Week</option>
@@ -32,14 +31,14 @@ export default function PeriodSelect({
 
             {/* CUSTOM DATE RANGE */}
             {datePreset === "custom" && (
-                <div className="flex gap-4 col-span-2">
+                <div className="flex gap-4 col-span-2 mt-2">
                     <div className="w-full">
                         <label className="text-sm block mb-1">Date From</label>
                         <input
                             type="date"
                             value={dateFrom || ""}
                             onChange={(e) => onDateFromChange(e.target.value)}
-                            className="w-full border border-border bg-white rounded-md px-3 py-2 text-sm"
+                            className="focus:ring-2 focus:ring-focus outline-none w-full border border-border bg-white rounded-md px-3 py-2 text-sm"
                         />
                     </div>
 
@@ -50,7 +49,7 @@ export default function PeriodSelect({
                             value={dateTo || ""}
                             min={dateFrom || undefined}
                             onChange={(e) => onDateToChange(e.target.value)}
-                            className={`w-full border rounded-md px-3 py-2 text-sm
+                            className={`focus:ring-2 focus:ring-focus outline-none w-full border rounded-md px-3 py-2 text-sm
                                 ${isInvalidRange ? "border-red-500" : "border-border"}
                             `}
                         />

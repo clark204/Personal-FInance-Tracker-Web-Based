@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Budget;
+use App\Models\Savings;
 use App\Models\Transaction;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class ExportController extends Controller
         return match ($type) {
             'income', 'expense', 'both' => $this->exportTransactions($request, $type),
             'budgets' => $this->exportBudgets($request),
+            'savings' => $this->exportSavings($request),
             default => response()->json([], 400),
         };
     }
@@ -113,6 +115,59 @@ class ExportController extends Controller
         return response()->json([
             'budgets' => $budgetSheet,
             'budget_transactions' => $transactionSheet,
+        ]);
+    }
+
+    public function exportSavings(Request $request)
+    {
+        $query = Savings::query();
+
+        if ($request->account_id) {
+            $query->where('account_id', $request->account_id);
+        }
+
+        if ($request->date_from) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->date_to) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $savingsSheet = $query->orderBy('created_at', 'desc')
+            ->with(['account.currency'])
+            ->get()
+            ->map(function ($savings) {
+                return [
+                    'Savings_ID' => $savings->id,
+                    'Savings_Name' => $savings->savings_name,
+                    'Account' => $savings->account->account_name,
+                    'Account_Type' => $savings->account->type,
+                    'Target_Amount' => $savings->account->currency->symbol . number_format($savings->target_amount, 2),
+                    'Saved_Amount' => $savings->account->currency->symbol . number_format($savings->saved_amount, 2),
+                    'Start_Date' => Carbon::parse($savings->created_at)->format('M d, Y'),
+                    'Deadline' => Carbon::parse($savings->deadline)->format('M d, Y'),
+                    'Description' => $savings->description ?? '-',
+                    'Status' => ucfirst($savings->status),
+                ];
+            });
+
+        $transactionSheet = $query->with(['savingsTransactions', 'account.currency'])
+            ->get()
+            ->flatMap(function ($savings) {
+                return $savings->savingsTransactions->map(function ($transaction) use ($savings) {
+                    return [
+                        'Savings_ID' => $savings->id,
+                        'Transaction_Date' => Carbon::parse($transaction->transaction_date)->format('M d, Y'),
+                        'Type' => $transaction->type,
+                        'Amount' => $savings->account->currency->symbol . number_format($transaction->amount, 2),
+                    ];
+                });
+            });
+
+        return response()->json([
+            'savings' => $savingsSheet,
+            'savings_transactions' => $transactionSheet,
         ]);
     }
 }

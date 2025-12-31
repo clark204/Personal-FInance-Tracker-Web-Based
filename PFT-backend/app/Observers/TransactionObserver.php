@@ -3,86 +3,85 @@
 namespace App\Observers;
 
 use App\Models\Transaction;
+use App\Notifications\BudgetThresholdReached;
 use Carbon\Carbon;
 
 class TransactionObserver
 {
-    /**
-     * Handle the Transaction "created" event.
-     */
     public function created(Transaction $transaction): void
     {
-        $this->updateBudgetOnTransactionChange($transaction);
+        $this->updateBudget($transaction);
     }
 
-    /**
-     * Handle the Transaction "updated" event.
-     */
     public function updated(Transaction $transaction): void
     {
-        $this->updateBudgetOnTransactionChange($transaction);
+        $this->updateBudget($transaction);
     }
 
-    /**
-     * Handle the Transaction "deleted" event.
-     */
     public function deleted(Transaction $transaction): void
     {
-        $this->updateBudgetOnTransactionChange($transaction);
+        $this->updateBudget($transaction);
     }
 
-    /**
-     * Handle the Transaction "restored" event.
-     */
     public function restored(Transaction $transaction): void
     {
-        $this->updateBudgetOnTransactionChange($transaction);
+        $this->updateBudget($transaction);
     }
 
-    /**
-     * Handle the Transaction "force deleted" event.
-     */
     public function forceDeleted(Transaction $transaction): void
     {
-        $this->updateBudgetOnTransactionChange($transaction);
+        $this->updateBudget($transaction);
     }
 
-    public function updateBudgetOnTransactionChange(Transaction $transaction): void
+    private function updateBudget(Transaction $transaction): void
     {
-        if (!$transaction->budget) return;
+        if (!$transaction->budget) {
+            return;
+        }
 
         $budget = $transaction->budget;
 
-        // Always recalc total spent from linked transactions
-        $totalSpent = $budget->transactions
+        // Store previous spent BEFORE recalculation
+        $previousSpent = $budget->budget_spent ?? 0;
+
+        // Recalculate total spent
+        $totalSpent = $budget->transactions()
             ->where('type', 'Expense')
             ->sum('amount');
 
         $budget->budget_spent = $totalSpent;
 
+        // Update status (still useful for UI)
         $today = now();
         $endDate = Carbon::parse($budget->end_date);
 
-        // --- 1. Overbudget ---
         if ($totalSpent > $budget->budget_amount) {
             $budget->status = 'overbudget';
-        }
-
-        // --- 2. Completed ---
-        else if ($totalSpent == $budget->budget_amount) {
+        } elseif ($totalSpent == $budget->budget_amount) {
             $budget->status = 'completed';
-        }
-
-        // --- 3. Overdue ---
-        else if ($today->gt($endDate)) {
+        } elseif ($today->gt($endDate)) {
             $budget->status = 'overdue';
-        }
-
-        // --- 4. Ontrack ---
-        else {
+        } else {
             $budget->status = 'ontrack';
         }
 
         $budget->save();
+
+        // ---- THRESHOLD NOTIFICATION LOGIC ----
+        $limit = max($budget->budget_amount, 1);
+
+        $previousPercent = ($previousSpent / $limit) * 100;
+        $currentPercent  = ($totalSpent / $limit) * 100;
+
+        $threshold = 80;
+
+        if (
+            $previousPercent < $threshold &&
+            $currentPercent >= $threshold
+        ) {
+            $budget->user?->notify(
+                new BudgetThresholdReached($budget)
+            );
+        }
     }
 }
