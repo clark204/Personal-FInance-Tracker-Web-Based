@@ -98,7 +98,7 @@ class TransactionController extends Controller
             $account->balance += $validated['amount'];
         } else {
             if ($account->balance < $validated['amount']) {
-                return response()->json(['status' => 'error', 'message' => 'Insufficient funds!'], 400);
+                return response()->json(['status' => 'error', 'message' => 'Insufficient balance!'], 400);
             }
             $account->balance -= $validated['amount'];
         }

@@ -82,7 +82,7 @@
         .verify-button {
             display: inline-block;
             background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white;
+            color: #ffffff !important; /* Force white text */
             text-decoration: none;
             padding: 16px 40px;
             border-radius: 10px;
@@ -91,11 +91,24 @@
             letter-spacing: 0.3px;
             transition: all 0.3s ease;
             box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            border: none;
+            cursor: pointer;
+            /* Force text color for all email clients */
+            text-decoration-color: #ffffff;
+            -webkit-text-fill-color: #ffffff;
+            -moz-text-fill-color: #ffffff;
         }
         
         .verify-button:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(255, 255, 255, 0.4);
+            box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+            color: #ffffff !important; /* Maintain white text on hover */
+        }
+        
+        /* Add this for better email client compatibility */
+        .verify-button a {
+            color: #ffffff !important;
+            text-decoration: none;
         }
         
         .divider {
@@ -175,24 +188,44 @@
             margin-top: 16px;
         }
         
-        @media (max-width: 520px) {
+        /* For email clients that strip out certain styles */
+        @media only screen and (max-width: 520px) {
             .container {
-                margin: 20px 10px;
-                border-radius: 12px;
+                margin: 20px 10px !important;
+                border-radius: 12px !important;
             }
             
             .content {
-                padding: 30px 20px;
+                padding: 30px 20px !important;
             }
             
             .header {
-                padding: 30px 20px;
+                padding: 30px 20px !important;
             }
             
             .code {
-                font-size: 22px;
-                letter-spacing: 6px;
-                padding: 12px;
+                font-size: 22px !important;
+                letter-spacing: 6px !important;
+                padding: 12px !important;
+            }
+            
+            .verify-button {
+                padding: 14px 32px !important;
+                font-size: 15px !important;
+            }
+        }
+        
+        /* Specific fixes for Outlook and older email clients */
+        .ExternalClass, .ExternalClass p, .ExternalClass span,
+        .ExternalClass font, .ExternalClass td, .ExternalClass div {
+            line-height: 100%;
+        }
+        
+        /* Ensure button text is visible in dark mode email clients */
+        @media (prefers-color-scheme: dark) {
+            .verify-button {
+                background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+                color: #ffffff !important;
             }
         }
     </style>
@@ -202,8 +235,8 @@
         <!-- Header Section -->
         <div class="header">
             <div class="logo-icon">✓</div>
-            <h1>Verify Your Email</h1>
-            <p style="opacity: 0.9; margin-top: 8px; font-size: 14px;">Complete your account setup</p>
+            <h1 style="color: white; margin: 0; font-size: 24px; font-weight: 600;">Verify Your Email</h1>
+            <p style="color: rgba(255, 255, 255, 0.9); margin-top: 8px; font-size: 14px;">Complete your account setup</p>
         </div>
         
         <!-- Content Section -->
@@ -217,25 +250,10 @@
             
             <!-- Verification Button -->
             <div class="button-container">
-                <a href="{{ $verifyUrl }}" class="verify-button">
-                    Verify Email Address
+                <a href="{{ $verifyUrl }}" class="verify-button" style="color: #ffffff; text-decoration: none; display: inline-block; padding: 16px 40px; background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); border-radius: 10px; font-weight: 600; font-size: 16px;">
+                    <span style="color: #ffffff;">Verify Email Address</span>
                 </a>
             </div>
-            
-            <!-- Alternative Method (if you have verification code) -->
-            <!--
-            <div class="divider"></div>
-            <div class="alternative">
-                <p style="margin-bottom: 12px;">Or enter this verification code in the app:</p>
-                <div class="code-container">
-                    <div class="code">6D8F3A</div>
-                </div>
-                <div class="expiry">
-                    <span>⏱️</span>
-                    <span>Code expires in 24 hours</span>
-                </div>
-            </div>
-            -->
             
             <div class="divider"></div>
             
@@ -248,7 +266,7 @@
             <div class="alternative">
                 If you're having trouble clicking the button, copy and paste this URL into your browser:
                 <br><br>
-                <a href="{{ $verifyUrl }}" style="color: #3b82f6; word-break: break-all;">{{ $verifyUrl }}</a>
+                <a href="{{ $verifyUrl }}" style="color: #3b82f6; word-break: break-all; text-decoration: none;">{{ $verifyUrl }}</a>
             </div>
         </div>
         
@@ -258,9 +276,9 @@
                 If you didn't create an account with us, you can safely ignore this email.
             </p>
             <p>
-                Questions? Contact our <a href="mailto:support@example.com">support team</a> • 
-                <a href="{{ config('app.url') }}/privacy">Privacy Policy</a> • 
-                <a href="{{ config('app.url') }}">Visit Website</a>
+                Questions? Contact our <a href="mailto:support@example.com" style="color: #64748b; text-decoration: none;">support team</a> • 
+                <a href="{{ config('app.url') }}/privacy" style="color: #64748b; text-decoration: none;">Privacy Policy</a> • 
+                <a href="{{ config('app.url') }}" style="color: #64748b; text-decoration: none;">Visit Website</a>
             </p>
             <p style="margin-top: 16px; font-size: 12px; opacity: 0.7;">
                 © {{ date('Y') }} Your Company. All rights reserved.

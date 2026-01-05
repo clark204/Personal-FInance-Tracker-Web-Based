@@ -25,10 +25,6 @@ function App() {
   const PublicRoutes = ({ children }) => {
     const { user, loading } = useAuth();
 
-    if (loading) {
-      return <LoadingScreen message="Checking authentication..." />;
-    }
-
     if (user) {
       return <Navigate to="/dashboard" />;
     }

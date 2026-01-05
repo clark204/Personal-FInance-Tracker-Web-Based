@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import api from "../api/api";
 
@@ -17,7 +17,9 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
     const [hasAccounts, setHasAccounts] = useState(false);
     const [checkingAccounts, setCheckingAccounts] = useState(false);
+    const [isLoggingIn, setIsLoggingIn] = useState(false);
     const queryClient = useQueryClient();
+    const initialLoadRef = useRef(true);
 
     // Function to check if user has accounts
     const checkUserAccounts = async () => {
@@ -46,25 +48,53 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    // Function to update auth headers
+    const updateAuthHeaders = (token) => {
+        if (token) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        } else {
+            delete api.defaults.headers.common['Authorization'];
+        }
+    };
+
     useEffect(() => {
         const initializeAuth = async () => {
             const token = localStorage.getItem('token');
-            const user = localStorage.getItem('user');
+            const storedUser = localStorage.getItem('user');
             
-            if (token && user) {
-                const parsedUser = JSON.parse(user);
-                setUser(parsedUser);
-                
-                // Set token for subsequent requests
-                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-                
-                // Check if user has accounts
-                await checkUserAccounts();
+            if (token && storedUser) {
+                try {
+                    const parsedUser = JSON.parse(storedUser);
+                    
+                    // Set headers first
+                    updateAuthHeaders(token);
+                    
+                    // Verify token is still valid
+                    const response = await api.get('/me');
+                    const verifiedUser = response.data || parsedUser;
+                    
+                    setUser(verifiedUser);
+                    localStorage.setItem('user', JSON.stringify(verifiedUser));
+                    
+                    // Check if user has accounts
+                    await checkUserAccounts();
+                } catch (error) {
+                    console.error('Token verification failed:', error);
+                    // Clear invalid auth data
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    updateAuthHeaders(null);
+                    setUser(null);
+                }
             }
+            
             setLoading(false);
+            initialLoadRef.current = false;
         };
         
-        initializeAuth();
+        if (initialLoadRef.current) {
+            initializeAuth();
+        }
     }, []);
 
     const checkAuth = async () => {
@@ -72,7 +102,6 @@ export const AuthProvider = ({ children }) => {
             const response = await api.get('/me');
             const authenticatedUser = response.data;
             setUser(authenticatedUser);
-
             localStorage.setItem('user', JSON.stringify(authenticatedUser));
             
             // Check accounts after successful auth check
@@ -85,101 +114,142 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
+        // Prevent multiple login attempts
+        if (isLoggingIn) {
+            return { success: false, message: 'Login already in progress' };
+        }
+        
+        setIsLoggingIn(true);
         setLoading(true);
-        const response = await api.post('/login', { email, password }, { validateStatus: () => true });
+        
+        try {
+            const response = await api.post('/login', { email, password }, { 
+                validateStatus: () => true,
+                timeout: 10000 // 10 second timeout
+            });
 
-        if (response.status === 401 || response.status === 403) {
-            setLoading(false);
-            return { success: false, message: response.data.message || 'Invalid email or password' };
-        }
+            // Handle specific status codes
+            if (response.status === 401 || response.status === 403) {
+                return { 
+                    success: false, 
+                    message: response.data?.message || 'Invalid email or password' 
+                };
+            }
 
-        if (response.status === 422) {
-            setLoading(false);
-            return {
-                success: false,
-                message: response.data.message || 'Validation failed',
-                errors: response.data.errors,
+            if (response.status === 422) {
+                return {
+                    success: false,
+                    message: response.data?.message || 'Validation failed',
+                    errors: response.data?.errors,
+                };
+            }
+
+            if (response.status !== 200 && response.status !== 201) {
+                console.error("Unexpected response:", response);
+                return {
+                    success: false,
+                    message: response.data?.message || 'Something went wrong',
+                };
+            }
+
+            const { user, authorization } = response.data;
+
+            if (!authorization || !authorization.token) {
+                return { 
+                    success: false, 
+                    message: 'Missing authorization data in response' 
+                };
+            }
+
+            // Store token and user
+            localStorage.setItem('token', authorization.token);
+            localStorage.setItem('user', JSON.stringify(user));
+            
+            // Update auth headers
+            updateAuthHeaders(authorization.token);
+            
+            // Update user state - this triggers re-renders
+            setUser(user);
+            
+            // Wait for state update to complete
+            await new Promise(resolve => setTimeout(resolve, 0));
+            
+            // Check accounts after login
+            const accountsCheck = await checkUserAccounts();
+            
+            // Wait a bit more to ensure all state is updated
+            await new Promise(resolve => setTimeout(resolve, 50));
+            
+            return { 
+                success: true, 
+                message: 'Login successful',
+                needsAccountSetup: !accountsCheck
             };
-        }
-
-        if (response.status !== 200 && response.status !== 201) {
-            setLoading(false);
-            console.error("Unexpected response:", response);
-            return {
-                success: false,
-                message: response.data.message || 'Something went wrong',
+        } catch (error) {
+            console.error('Login error:', error);
+            return { 
+                success: false, 
+                message: error.message || 'Network error' 
             };
-        }
-
-        const { user, authorization } = response.data;
-
-        if (!authorization || !authorization.token) {
+        } finally {
             setLoading(false);
-            return { success: false, message: 'Missing authorization data in response' };
+            setIsLoggingIn(false);
         }
-
-        // Store token and user
-        localStorage.setItem('token', authorization.token);
-        localStorage.setItem('user', JSON.stringify(user));
-        
-        // Set token for subsequent requests
-        api.defaults.headers.common['Authorization'] = `Bearer ${authorization.token}`;
-        
-        setUser(user);
-        
-        // Check accounts after login
-        const accountsCheck = await checkUserAccounts();
-        setLoading(false);
-
-        return { 
-            success: true, 
-            message: 'Login successful',
-            needsAccountSetup: !accountsCheck
-        };
     };
 
     const logout = async () => {
         try {
-            await api.post('/logout');
+            await api.post('/logout', {}, { timeout: 5000 });
         } catch (error) {
             console.error('Logout failed:', error);
         } finally {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
+            updateAuthHeaders(null);
             setUser(null);
             setHasAccounts(false);
             queryClient.clear();
+            setLoading(false);
         }
     };
 
     const register = async (name, email, password, confirmPassword) => {
-        const response = await api.post('/register', {
-            name,
-            email,
-            password,
-            password_confirmation: confirmPassword
-        }, {
-            validateStatus: () => true
-        });
+        try {
+            const response = await api.post('/register', {
+                name,
+                email,
+                password,
+                password_confirmation: confirmPassword
+            }, {
+                validateStatus: () => true,
+                timeout: 10000
+            });
 
-        if (response.status === 201 || response.status === 200) {
-            return {
-                success: true,
-                data: response.data || 'Registration successful. Please check your email.'
-            };
-        } else if (response.status === 422) {
-            console.log("Validation errors:", response.data.errors);
+            if (response.status === 201 || response.status === 200) {
+                return {
+                    success: true,
+                    data: response.data || 'Registration successful. Please check your email.'
+                };
+            } else if (response.status === 422) {
+                console.log("Validation errors:", response.data?.errors);
+                return {
+                    success: false,
+                    error: response.data?.message || 'Validation failed',
+                    errors: response.data?.errors
+                };
+            } else {
+                console.log("Unexpected error:", response.data);
+                return {
+                    success: false,
+                    error: response.data?.message || 'Registration failed',
+                    errors: response.data?.errors
+                };
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
             return {
                 success: false,
-                error: response.data.message || 'Validation failed',
-                errors: response.data.errors
-            };
-        } else {
-            console.log("Unexpected error:", response.data);
-            return {
-                success: false,
-                error: response.data.message || 'Registration failed',
-                errors: response.data.errors
+                error: error.message || 'Network error during registration'
             };
         }
     };
@@ -195,7 +265,8 @@ export const AuthProvider = ({ children }) => {
             logout, 
             checkAuth, 
             register, 
-            setUser 
+            setUser,
+            isLoggingIn
         }}>
             {children}
         </AuthContext.Provider>

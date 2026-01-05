@@ -2,8 +2,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import { X, TrendingUp, Target, Calendar, PieChart, DollarSign, CheckCircle, AlertTriangle, BarChart } from "lucide-react";
 
 export default function BudgetSummary({ isOpen, onClose, budgets = [] }) {
-    console.log(budgets);
-
     // Get currency symbol from first budget's account info
     const getCurrencySymbol = () => {
         if (budgets.length > 0 && budgets[0].account?.currency?.symbol) {

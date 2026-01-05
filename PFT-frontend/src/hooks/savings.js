@@ -39,7 +39,7 @@ export const useSavings = (savingsID = null, filters = {}) => {
         }
     });
 
-    
+
     const showSaving = useQuery({
         queryKey: ["savings", savingsID],
         queryFn: async () => {
@@ -111,26 +111,64 @@ export const useSavings = (savingsID = null, filters = {}) => {
     const createSavingsTransaction = useMutation({
         mutationFn: async (newData) => {
             const response = await api.post("/savings-transactions", newData, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                validateStatus: (status) => true,
             });
-            return response.data;
+
+            // If Laravel returns an error status
+            if (response.status >= 400) {
+                return { success: false, data: response.data };
+            }
+
+            return { success: true, data: response.data };
         },
-        onSuccess: () => {
+
+        onSuccess: (res) => {
+            if (!res.success) {
+                // Handle custom backend errors (400 responses)
+                if (res.data.message) {
+                    toast.error(res.data.message, {
+                        position: "bottom-right",
+                        autoClose: 5000,
+                        theme: "light",
+                        transition: Bounce,
+                    });
+                }
+                // Handle Laravel validation errors (422)
+                else if (res.data.errors) {
+                    const firstKey = Object.keys(res.data.errors)[0];
+                    const errorMessage = res.data.errors[firstKey][0];
+                    toast.error(errorMessage, {
+                        position: "bottom-right",
+                        autoClose: 5000,
+                        theme: "light",
+                        transition: Bounce,
+                    });
+                } else {
+                    toast.error("Transaction failed", {
+                        position: "bottom-right",
+                        autoClose: 5000,
+                        theme: "light",
+                        transition: Bounce,
+                    });
+                }
+                return;
+            }
+
+            // Success case
             queryClient.invalidateQueries({ queryKey: ["savings", savingsID] });
             queryClient.invalidateQueries({ queryKey: ["savings"] });
             queryClient.invalidateQueries(["accounts"]);
-            toast.success('Savings transaction created successfully!', {
+
+            toast.success(res.data.message || "Transaction completed successfully!", {
                 position: "bottom-right",
                 autoClose: 5000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                progress: undefined,
                 theme: "light",
                 transition: Bounce,
             });
-        }
+        },
     });
+
 
     return {
         getSavings,

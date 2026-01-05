@@ -2,38 +2,56 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 
 export default function Login() {
     const [form, setForm] = useState({ email: "", password: "" });
     const [error, setError] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [success, setSuccess] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const { login } = useAuth();
     const navigate = useNavigate();
 
     const handleChange = (e) => {
-        setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+        const { name, value } = e.target;
+        setForm(prev => ({ ...prev, [name]: value }));
         if (error) setError(null);
+        if (success) setSuccess(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        if (isSubmitting) return;
+        
+        setIsSubmitting(true);
         setError(null);
+        setSuccess(null);
 
         const result = await login(form.email, form.password);
 
         if (!result.success) {
-            setError(result.message || "Invalid credentials");
-            setLoading(false);
+            // Check if this is an email verification error
+            if (result.message?.includes('Email not verified')) {
+                setSuccess('A new verification email has been sent to your email address.');
+            } else {
+                setError(result.message || "Invalid credentials");
+            }
+            setIsSubmitting(false);
         } else {
             setError(null);
-            // If user needs account setup, navigate to create-account
-            if (result.needsAccountSetup) {
-                navigate("/dashboard/create-account");
-            } else {
-                navigate("/dashboard");
-            }
+            setSuccess(null);
+            
+            // Wait a bit longer to ensure auth state is fully updated
+            setTimeout(() => {
+                if (result.needsAccountSetup) {
+                    navigate("/dashboard/create-account");
+                } else {
+                    navigate("/dashboard");
+                }
+            }, 300);
+            
+            // Don't set isSubmitting to false here since we're navigating away
         }
     };
 
@@ -41,11 +59,25 @@ export default function Login() {
         "w-full px-5 py-2 rounded-md border border-border placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-focus focus:border-focus transition";
 
     const btnClass =
-        "w-full py-3 bg-button text-text-white rounded-md font-semibold hover:bg-hover-button transition disabled:opacity-50";
+        "w-full py-3 bg-button text-white rounded-md font-semibold hover:bg-hover-button transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2";
 
     const fields = [
-        { label: "Email", id: "email", name: "email", type: "email", placeholder: "Email" },
-        { label: "Password", id: "password", name: "password", type: "password", placeholder: "Password" }
+        { 
+            label: "Email", 
+            id: "email", 
+            name: "email", 
+            type: "email", 
+            placeholder: "Email",
+            autoComplete: "email"
+        },
+        { 
+            label: "Password", 
+            id: "password", 
+            name: "password", 
+            type: "password", 
+            placeholder: "Password",
+            autoComplete: "current-password"
+        }
     ];
 
     return (
@@ -63,7 +95,7 @@ export default function Login() {
             <form onSubmit={handleSubmit} className="space-y-3 w-full" method="POST">
                 {fields.map((field) => (
                     <motion.div key={field.id}>
-                        <label htmlFor={field.id} className="text-text/80 mb-1">
+                        <label htmlFor={field.id} className="text-text/80 mb-1 block">
                             {field.label}
                         </label>
                         <input
@@ -76,20 +108,40 @@ export default function Login() {
                             required
                             className={inputBase}
                             autoComplete={field.autoComplete}
-                            disabled={loading}
+                            disabled={isSubmitting}
                         />
                     </motion.div>
                 ))}
 
-                <div className={`${error ? "flex justify-between" : "text-right"}`}>
-                    {error && (
-                        <p className="text-red-500 text-sm px-4">{error}</p>
-                    )}
+                {/* Show success message (for email verification) */}
+                {success && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md"
+                    >
+                        <p className="text-sm">{success}</p>
+                    </motion.div>
+                )}
+
+                {/* Show error message */}
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md"
+                    >
+                        <p className="text-sm">{error}</p>
+                    </motion.div>
+                )}
+
+                <div className="flex justify-between items-center">
+                    <div className=""></div>
                     <button
                         type="button"
                         className="text-sm text-button hover:text-hover-button font-medium transition cursor-pointer disabled:opacity-50"
                         onClick={() => alert("Redirect to forgot password flow")}
-                        disabled={loading}
+                        disabled={isSubmitting}
                     >
                         Forgot password?
                     </button>
@@ -98,9 +150,16 @@ export default function Login() {
                 <button 
                     type="submit" 
                     className={btnClass} 
-                    disabled={loading}
+                    disabled={isSubmitting}
                 >
-                    {loading ? "Logging in..." : "Login"}
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Signing in...</span>
+                        </>
+                    ) : (
+                        "Login"
+                    )}
                 </button>
             </form>
         </motion.div>

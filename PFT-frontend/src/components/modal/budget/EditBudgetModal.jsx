@@ -6,7 +6,6 @@ import { useEffect, useState, useCallback } from "react";
 export default function EditBudgetModal({ isOpen, onClose, budgetID }) {
     const { showBudget, updateBudget } = useBudget(budgetID);
     const details = showBudget.data;
-    console.log("budget data:", details);
 
     const [formData, setFormData] = useState({
         budget_amount: "",

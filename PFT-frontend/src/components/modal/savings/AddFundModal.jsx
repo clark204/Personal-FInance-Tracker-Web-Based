@@ -8,7 +8,9 @@ export default function AddFundModal({ isOpen, onClose, savingsID, fundsType }) 
     const [amount, setAmount] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const isDeposit = fundsType === 'deposit';
+    // Ensure type matches backend expectations
+    const backendType = fundsType === 'withdraw' ? 'withdrawal' : fundsType;
+    const isDeposit = backendType === 'deposit';
     const title = isDeposit ? "Add Funds" : "Withdraw Funds";
     const description = isDeposit 
         ? "Set a contribution amount for your savings goal" 
@@ -24,7 +26,7 @@ export default function AddFundModal({ isOpen, onClose, savingsID, fundsType }) 
         
         const transactionData = {
             savings_id: savingsID,
-            type: fundsType,
+            type: backendType, // Use the mapped type
             amount: parseFloat(amount),
             transaction_date: new Date().toISOString().split('T')[0],
         };
@@ -34,11 +36,11 @@ export default function AddFundModal({ isOpen, onClose, savingsID, fundsType }) 
             setAmount("");
             onClose();
         } catch (error) {
-            console.error(`Failed to ${fundsType}:`, error);
+            console.error(`Failed to ${backendType}:`, error);
         } finally {
             setIsSubmitting(false);
         }
-    }, [amount, savingsID, fundsType, createSavingsTransaction, onClose, isSubmitting]);
+    }, [amount, savingsID, backendType, createSavingsTransaction, onClose, isSubmitting]);
 
     return (
         <AnimatePresence mode="wait">
