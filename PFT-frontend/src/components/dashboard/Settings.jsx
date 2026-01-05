@@ -1,8 +1,8 @@
+// components/Settings.js
 import React, { useEffect, useState } from "react";
 import {
     Bell,
     Shield,
-    Moon,
     Eye,
     EyeOff,
     Lock,
@@ -14,15 +14,141 @@ import {
     AlertCircle,
     DollarSign,
     CheckCircle,
-    Save
+    Save,
+    Loader2,
+    AlertTriangle
 } from "lucide-react";
 import { useSetting } from "../../hooks/setting";
 import { useAuth } from "../../context/AuthContext";
+import { toast } from "react-toastify";
+
+// Account Deletion Modal Component
+const AccountDeletionModal = ({ isOpen, onClose, onDelete, isDeleting }) => {
+    const [step, setStep] = useState(1);
+    const [password, setPassword] = useState('');
+    const [confirmation, setConfirmation] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (step === 1) {
+            if (!password) {
+                toast.error('Please enter your password');
+                return;
+            }
+            setStep(2);
+        } else {
+            if (confirmation !== 'DELETE MY ACCOUNT PERMANENTLY') {
+                toast.error('Please type exactly "DELETE MY ACCOUNT PERMANENTLY"');
+                return;
+            }
+            
+            await onDelete(password, confirmation);
+            onClose();
+        }
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+                <div className="p-6 border-b border-gray-200">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="p-2 bg-red-100 rounded-lg">
+                            <AlertTriangle className="w-6 h-6 text-red-600" />
+                        </div>
+                        <h3 className="text-xl font-bold text-gray-800">Delete Account</h3>
+                    </div>
+                    <p className="text-gray-600">
+                        {step === 1 
+                            ? 'This action cannot be undone. Please enter your password to continue.' 
+                            : 'Type "DELETE MY ACCOUNT PERMANENTLY" to confirm deletion.'}
+                    </p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="p-6">
+                    {step === 1 ? (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Enter your password
+                                </label>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    placeholder="Your current password"
+                                    required
+                                    disabled={isDeleting}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                    Type exactly: DELETE MY ACCOUNT PERMANENTLY
+                                </label>
+                                <input
+                                    type="text"
+                                    value={confirmation}
+                                    onChange={(e) => setConfirmation(e.target.value)}
+                                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                                    placeholder='Type "DELETE MY ACCOUNT PERMANENTLY"'
+                                    required
+                                    disabled={isDeleting}
+                                />
+                            </div>
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                <p className="text-sm text-red-700">
+                                    ⚠️ Warning: This will permanently delete all your data including accounts, transactions, budgets, and savings. This action cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex gap-3 mt-6">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setStep(1);
+                                setPassword('');
+                                setConfirmation('');
+                                onClose();
+                            }}
+                            disabled={isDeleting}
+                            className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isDeleting}
+                            className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                        >
+                            {isDeleting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Deleting...
+                                </>
+                            ) : step === 1 ? (
+                                'Continue'
+                            ) : (
+                                'Delete Account'
+                            )}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
 
 export default function Settings() {
     const { user, setUser } = useAuth();
-    const { updateNotification } = useSetting();
-    console.log(user);
+    const { updateNotification, changePassword, deleteAccount } = useSetting();
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
 
     // Notification states
     const [emailNotif, setEmailNotif] = useState(false);
@@ -37,8 +163,6 @@ export default function Settings() {
         }
     }, [user]);
 
-    const [darkMode, setDarkMode] = useState(false);
-
     // Password states
     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -50,19 +174,26 @@ export default function Settings() {
     });
     const [passwordError, setPasswordError] = useState("");
     const [saveNotificationStatus, setSaveNotificationStatus] = useState("");
-    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+    // Handle account deletion
+    const handleDeleteAccount = async (password, confirmation) => {
+        try {
+            await deleteAccount.mutateAsync({
+                password: password,
+                confirmation: confirmation
+            });
+            // Modal will close automatically on success
+        } catch (error) {
+            // Error is already handled by the mutation's onError
+            console.error('Account deletion error:', error);
+        }
+    };
 
     // Handle notification save with feedback
     const handleSaveNotifications = async () => {
-        // Simulate API call
-        setSaveNotificationStatus("saving");
-        setTimeout(() => {
-            setSaveNotificationStatus("saved");
-            // Reset status after 2 seconds
-            setTimeout(() => setSaveNotificationStatus(""), 2000);
-        }, 800);
-
         try {
+            setSaveNotificationStatus("saving");
+            
             const updated = await updateNotification.mutateAsync({
                 email_notifications: emailNotif,
                 budget_alerts: budgetAlert,
@@ -70,7 +201,12 @@ export default function Settings() {
             });
 
             // Update user in context
-            const newUser = { ...user, email_notifications: emailNotif, budget_alerts: budgetAlert, savings_alerts: savingsAlert };
+            const newUser = { 
+                ...user, 
+                email_notifications: emailNotif, 
+                budget_alerts: budgetAlert, 
+                savings_alerts: savingsAlert 
+            };
             setUser(newUser);
             localStorage.setItem("user", JSON.stringify(newUser));
 
@@ -82,9 +218,12 @@ export default function Settings() {
         }
     };
 
-    // Handle password change with validation
-    const handleChangePassword = () => {
-        // Validation
+    // Handle password change with validation (simplified)
+    const handleChangePassword = async () => {
+        // Clear previous errors
+        setPasswordError("");
+
+        // Basic validation
         if (!passwords.current || !passwords.new || !passwords.confirm) {
             setPasswordError("All password fields are required");
             return;
@@ -100,38 +239,21 @@ export default function Settings() {
             return;
         }
 
-        // Password complexity check
-        const hasUpperCase = /[A-Z]/.test(passwords.new);
-        const hasNumber = /\d/.test(passwords.new);
-        if (!hasUpperCase || !hasNumber) {
-            setPasswordError("Password must contain at least one uppercase letter and one number");
-            return;
-        }
+        try {
+            // Call the mutation
+            await changePassword.mutateAsync({
+                current: passwords.current,
+                new: passwords.new,
+                confirm: passwords.confirm
+            });
 
-        setPasswordError("");
-        setIsChangingPassword(true);
-
-        console.log("Changing password:", {
-            current: passwords.current,
-            new: passwords.new
-        });
-
-        // Simulate API call
-        setTimeout(() => {
-            setIsChangingPassword(false);
-            // Clear password fields
+            // Clear password fields on success
             setPasswords({ current: "", new: "", confirm: "" });
-
-            // Show success message (in a real app, use toast notification)
-            alert("Password changed successfully!");
-        }, 1500);
-
-        // Add actual API call here
-        // fetch('/api/auth/change-password', {
-        //     method: 'POST',
-        //     headers: { 'Content-Type': 'application/json' },
-        //     body: JSON.stringify(passwords)
-        // })
+            
+        } catch (error) {
+            // Error is already handled by the mutation's onError
+            console.error('Password change error:', error);
+        }
     };
 
     const handleDeleteAccountData = () => {
@@ -171,47 +293,9 @@ export default function Settings() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Left Column - Main Settings */}
-                    <div className="lg:col-span-2 space-y-6">
-                        {/* Display Preferences */}
-                        <div className="bg-white rounded-2xl shadow-lg border border-border overflow-hidden">
-                            <div className="bg-gradient-to-r from-main/5 to-main-light/5 border-b border-border/30 p-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-3 bg-gradient-to-br from-main to-main-light rounded-xl">
-                                        <Moon className="w-6 h-6 text-white" />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-xl font-bold text-main">Display Preferences</h2>
-                                        <p className="text-sm text-text-secondary">Customize your app appearance</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="p-6">
-                                <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2.5 bg-gray-100 rounded-lg">
-                                            <Moon className="w-5 h-5 text-gray-700" />
-                                        </div>
-                                        <div>
-                                            <p className="font-semibold text-main">Dark Mode</p>
-                                            <p className="text-sm text-text-secondary">Switch to dark theme for better visibility in low light</p>
-                                        </div>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="sr-only peer"
-                                            checked={darkMode}
-                                            onChange={() => setDarkMode(!darkMode)}
-                                        />
-                                        <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-main"></div>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Left Column - Notifications */}
+                    <div className="space-y-6">
                         {/* Notifications */}
                         <div className="bg-white rounded-2xl shadow-lg border border-border overflow-hidden">
                             <div className="bg-gradient-to-r from-main/5 to-main-light/5 border-b border-border/30 p-6">
@@ -275,12 +359,12 @@ export default function Settings() {
 
                                     <button
                                         onClick={handleSaveNotifications}
-                                        disabled={saveNotificationStatus === "saving"}
+                                        disabled={saveNotificationStatus === "saving" || updateNotification.isLoading}
                                         className="w-full py-3 bg-button text-white font-semibold rounded-lg hover:bg-hover-button disabled:opacity-70 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
                                     >
-                                        {saveNotificationStatus === "saving" ? (
+                                        {saveNotificationStatus === "saving" || updateNotification.isLoading ? (
                                             <>
-                                                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
                                                 Saving...
                                             </>
                                         ) : saveNotificationStatus === "saved" ? (
@@ -300,7 +384,7 @@ export default function Settings() {
                         </div>
                     </div>
 
-                    {/* Right Column */}
+                    {/* Right Column - Security & About */}
                     <div className="space-y-6">
                         {/* Account Security */}
                         <div className="bg-white rounded-2xl shadow-lg border border-border overflow-hidden">
@@ -332,11 +416,13 @@ export default function Settings() {
                                             placeholder="Enter current password"
                                             value={passwords.current}
                                             onChange={(e) => handlePasswordChange("current", e.target.value)}
+                                            disabled={changePassword.isLoading}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+                                            disabled={changePassword.isLoading}
                                         >
                                             {showCurrentPassword ? <EyeOff className="w-4 h-4 text-text-secondary" /> : <Eye className="w-4 h-4 text-text-secondary" />}
                                         </button>
@@ -349,14 +435,16 @@ export default function Settings() {
                                         <input
                                             type={showNewPassword ? "text" : "password"}
                                             className="w-full px-4 py-2.5 bg-gray-50 rounded-lg border border-border/30 focus:outline-none focus:ring-2 focus:ring-main focus:border-transparent pr-12"
-                                            placeholder="Enter new password"
+                                            placeholder="Enter new password (min 8 characters)"
                                             value={passwords.new}
                                             onChange={(e) => handlePasswordChange("new", e.target.value)}
+                                            disabled={changePassword.isLoading}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowNewPassword(!showNewPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+                                            disabled={changePassword.isLoading}
                                         >
                                             {showNewPassword ? <EyeOff className="w-4 h-4 text-text-secondary" /> : <Eye className="w-4 h-4 text-text-secondary" />}
                                         </button>
@@ -372,11 +460,13 @@ export default function Settings() {
                                             placeholder="Confirm new password"
                                             value={passwords.confirm}
                                             onChange={(e) => handlePasswordChange("confirm", e.target.value)}
+                                            disabled={changePassword.isLoading}
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-gray-200 rounded disabled:opacity-50"
+                                            disabled={changePassword.isLoading}
                                         >
                                             {showConfirmPassword ? <EyeOff className="w-4 h-4 text-text-secondary" /> : <Eye className="w-4 h-4 text-text-secondary" />}
                                         </button>
@@ -385,12 +475,12 @@ export default function Settings() {
 
                                 <button
                                     onClick={handleChangePassword}
-                                    disabled={isChangingPassword}
+                                    disabled={changePassword.isLoading}
                                     className="flex items-center justify-center gap-2 w-full px-6 py-3 bg-button text-white font-semibold rounded-lg hover:bg-hover-button disabled:opacity-70 disabled:cursor-not-allowed transition-colors"
                                 >
-                                    {isChangingPassword ? (
+                                    {changePassword.isLoading ? (
                                         <>
-                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
                                             Changing Password...
                                         </>
                                     ) : (
@@ -401,7 +491,7 @@ export default function Settings() {
                                     )}
                                 </button>
 
-                                {/* Security Tips */}
+                                {/* Security Tips - Simplified */}
                                 <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
                                     <p className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
                                         <Key className="w-4 h-4" />
@@ -413,12 +503,12 @@ export default function Settings() {
                                             Minimum 8 characters
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${/[A-Z]/.test(passwords.new) ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                                            Include uppercase letters
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                            Can be any combination of characters
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <div className={`w-1.5 h-1.5 rounded-full ${/\d/.test(passwords.new) ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                                            At least one number
+                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                            Uppercase, numbers, and symbols are optional
                                         </div>
                                     </div>
                                 </div>
@@ -459,7 +549,7 @@ export default function Settings() {
                     </div>
                 </div>
 
-                {/* Danger Zone */}
+                {/* Danger Zone - UPDATED */}
                 <div className="mt-8">
                     <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-2xl shadow-lg border border-red-200 overflow-hidden">
                         <div className="p-6 md:p-8">
@@ -475,21 +565,23 @@ export default function Settings() {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 gap-4">
                                 <button
-                                    onClick={handleDeleteAccountData}
-                                    className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-white border-2 border-red-300 text-red-700 font-semibold rounded-lg hover:bg-red-50 transition-colors"
+                                    onClick={() => setShowDeleteModal(true)}
+                                    disabled={deleteAccount.isLoading}
+                                    className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <Trash2 className="w-5 h-5" />
-                                    Delete All Account Data
-                                </button>
-
-                                <button
-                                    onClick={handleDeactivateAccount}
-                                    className="flex items-center justify-center gap-2 w-full px-6 py-3.5 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
-                                >
-                                    <Power className="w-5 h-5" />
-                                    Deactivate Account
+                                    {deleteAccount.isLoading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Deleting...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Power className="w-5 h-5" />
+                                            Delete Account Permanently
+                                        </>
+                                    )}
                                 </button>
                             </div>
 
@@ -502,6 +594,14 @@ export default function Settings() {
                     </div>
                 </div>
             </div>
+
+            {/* Account Deletion Modal */}
+            <AccountDeletionModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onDelete={handleDeleteAccount}
+                isDeleting={deleteAccount.isLoading}
+            />
         </div>
     );
 }

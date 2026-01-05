@@ -29,9 +29,14 @@ Route::get('/currencies', [CurrencyController::class, 'index']);
 // ----------------------------
 Route::middleware('auth:api')->group(function () {
 
+    // USER
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
     Route::get('/me', [AuthController::class, 'me']);
+    Route::post('/profile/avatar', [AuthController::class, 'updateProfilePicture']);
+    Route::post('/profile', [AuthController::class, 'update']);
+    Route::post('/settings/change-password', [AuthController::class, 'changePassword']);
+    Route::post('/delete/account', [AuthController::class, 'deleteAccount']);
 
     Route::apiResource('transactions', TransactionController::class);
     Route::apiResource('accounts', AccountController::class);

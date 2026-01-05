@@ -10,6 +10,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
+use App\Models\Account;
+use App\Models\Savings;
+use App\Models\Budget;
+
 class User extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -27,6 +31,7 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
         'email_notifications',
         'budget_alerts',
         'savings_alerts',
+        'avatar'
     ];
 
     /**
@@ -75,5 +80,10 @@ class User extends Authenticatable implements JWTSubject, MustVerifyEmail
     public function budgets()
     {
         return $this->hasMany(Budget::class);
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

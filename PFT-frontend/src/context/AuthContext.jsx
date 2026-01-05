@@ -15,15 +15,56 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [hasAccounts, setHasAccounts] = useState(false);
+    const [checkingAccounts, setCheckingAccounts] = useState(false);
     const queryClient = useQueryClient();
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        const user = localStorage.getItem('user');
-        if (token && user) {
-            setUser(JSON.parse(user));
+    // Function to check if user has accounts
+    const checkUserAccounts = async () => {
+        try {
+            setCheckingAccounts(true);
+            const response = await api.get('/accounts');
+            const accounts = response.data?.data || response.data?.account || response.data;
+            
+            // Handle different possible response structures
+            let accountArray = [];
+            if (Array.isArray(accounts)) {
+                accountArray = accounts;
+            } else if (accounts?.account && Array.isArray(accounts.account)) {
+                accountArray = accounts.account;
+            }
+            
+            const hasAccounts = accountArray.length > 0;
+            setHasAccounts(hasAccounts);
+            return hasAccounts;
+        } catch (error) {
+            console.error('Error checking accounts:', error);
+            setHasAccounts(false);
+            return false;
+        } finally {
+            setCheckingAccounts(false);
         }
-        setLoading(false);
+    };
+
+    useEffect(() => {
+        const initializeAuth = async () => {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (token && user) {
+                const parsedUser = JSON.parse(user);
+                setUser(parsedUser);
+                
+                // Set token for subsequent requests
+                api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+                
+                // Check if user has accounts
+                await checkUserAccounts();
+            }
+            setLoading(false);
+        };
+        
+        initializeAuth();
     }, []);
 
     const checkAuth = async () => {
@@ -33,6 +74,9 @@ export const AuthProvider = ({ children }) => {
             setUser(authenticatedUser);
 
             localStorage.setItem('user', JSON.stringify(authenticatedUser));
+            
+            // Check accounts after successful auth check
+            await checkUserAccounts();
         } catch (error) {
             logout();
         } finally {
@@ -41,41 +85,58 @@ export const AuthProvider = ({ children }) => {
     };
 
     const login = async (email, password) => {
+        setLoading(true);
         const response = await api.post('/login', { email, password }, { validateStatus: () => true });
-    
+
         if (response.status === 401 || response.status === 403) {
+            setLoading(false);
             return { success: false, message: response.data.message || 'Invalid email or password' };
         }
-    
+
         if (response.status === 422) {
+            setLoading(false);
             return {
                 success: false,
                 message: response.data.message || 'Validation failed',
                 errors: response.data.errors,
             };
         }
-    
+
         if (response.status !== 200 && response.status !== 201) {
+            setLoading(false);
             console.error("Unexpected response:", response);
             return {
                 success: false,
                 message: response.data.message || 'Something went wrong',
             };
         }
-    
+
         const { user, authorization } = response.data;
-    
+
         if (!authorization || !authorization.token) {
+            setLoading(false);
             return { success: false, message: 'Missing authorization data in response' };
         }
-    
+
+        // Store token and user
         localStorage.setItem('token', authorization.token);
         localStorage.setItem('user', JSON.stringify(user));
+        
+        // Set token for subsequent requests
+        api.defaults.headers.common['Authorization'] = `Bearer ${authorization.token}`;
+        
         setUser(user);
-    
-        return { success: true, message: 'Login successful' };
+        
+        // Check accounts after login
+        const accountsCheck = await checkUserAccounts();
+        setLoading(false);
+
+        return { 
+            success: true, 
+            message: 'Login successful',
+            needsAccountSetup: !accountsCheck
+        };
     };
-    
 
     const logout = async () => {
         try {
@@ -86,6 +147,7 @@ export const AuthProvider = ({ children }) => {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             setUser(null);
+            setHasAccounts(false);
             queryClient.clear();
         }
     };
@@ -122,12 +184,20 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, checkAuth, register, setUser }}>
+        <AuthContext.Provider value={{ 
+            user, 
+            loading, 
+            hasAccounts,
+            checkingAccounts,
+            checkUserAccounts,
+            login, 
+            logout, 
+            checkAuth, 
+            register, 
+            setUser 
+        }}>
             {children}
         </AuthContext.Provider>
     );
-}
-
-
+};

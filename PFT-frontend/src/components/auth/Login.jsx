@@ -13,30 +13,35 @@ export default function Login() {
 
     const handleChange = (e) => {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-        if (error) setError(null); // clear general error when typing
+        if (error) setError(null);
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError(null);
 
         const result = await login(form.email, form.password);
 
         if (!result.success) {
             setError(result.message || "Invalid credentials");
+            setLoading(false);
         } else {
             setError(null);
-            navigate("/dashboard");
+            // If user needs account setup, navigate to create-account
+            if (result.needsAccountSetup) {
+                navigate("/dashboard/create-account");
+            } else {
+                navigate("/dashboard");
+            }
         }
-
-        setLoading(false);
     };
 
     const inputBase =
         "w-full px-5 py-2 rounded-md border border-border placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-focus focus:border-focus transition";
 
     const btnClass =
-        "w-full py-3 bg-button text-text-white rounded-md font-semibold hover:bg-hover-button transition";
+        "w-full py-3 bg-button text-text-white rounded-md font-semibold hover:bg-hover-button transition disabled:opacity-50";
 
     const fields = [
         { label: "Email", id: "email", name: "email", type: "email", placeholder: "Email" },
@@ -71,25 +76,30 @@ export default function Login() {
                             required
                             className={inputBase}
                             autoComplete={field.autoComplete}
+                            disabled={loading}
                         />
                     </motion.div>
                 ))}
 
                 <div className={`${error ? "flex justify-between" : "text-right"}`}>
-                    {/* General error message */}
                     {error && (
                         <p className="text-red-500 text-sm px-4">{error}</p>
                     )}
                     <button
                         type="button"
-                        className="text-sm text-button hover:text-hover-button font-medium transition cursor-pointer"
+                        className="text-sm text-button hover:text-hover-button font-medium transition cursor-pointer disabled:opacity-50"
                         onClick={() => alert("Redirect to forgot password flow")}
+                        disabled={loading}
                     >
                         Forgot password?
                     </button>
                 </div>
 
-                <button type="submit" className={btnClass} disabled={loading}>
+                <button 
+                    type="submit" 
+                    className={btnClass} 
+                    disabled={loading}
+                >
                     {loading ? "Logging in..." : "Login"}
                 </button>
             </form>

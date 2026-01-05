@@ -34,6 +34,8 @@ export default function Header({ onMenuClick }) {
         if (path.includes("/dashboard/budgets")) return "Budget";
         if (path.includes("/dashboard/goals")) return "Savings Goal";
         if (path.includes("/dashboard/accounts")) return "Accounts";
+        if (path.includes("/dashboard/settings")) return "Settings";
+        if (path.includes("/dashboard/profile")) return "Profile";
         return "Dashboard";
     };
 

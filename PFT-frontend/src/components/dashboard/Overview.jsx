@@ -1,15 +1,61 @@
 // pages/Overview.js
-import { Wallet, Filter, Calendar } from "lucide-react";
+import { Wallet, CreditCard, Banknote, Building, Filter, Calendar, Info } from "lucide-react";
 import IncomeExpenseChart from "../overview/IncomeExpenseChart";
 import SpendingCategoryChart from "../overview/SpendingCategoryChart";
 import BudgetOverview from "../overview/BudgetOverview";
 import GoalOverview from "../overview/GoalOverview";
 import RecentTransactions from "../overview/RecentTransaction";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, useNavigate } from "react-router-dom";
+import { useEffect } from "react";
+import { useAccount } from "../../hooks/account";
 
 export default function Overview() {
     const { overviewFilter } = useOutletContext();
     const { filters, applyPreset, updateFilter } = overviewFilter;
+    const navigate = useNavigate();
+
+    // Fetch accounts
+    const { getAccounts } = useAccount();
+    const accounts = getAccounts?.data?.account || [];
+
+    // Loading state from the hook
+    const accountsLoading = getAccounts?.isLoading || false;
+
+    // Get current selected account
+    const currentAccount = accounts.find(acc => acc.id === parseInt(filters.account_id)) || accounts[0];
+
+    // If no account_id is set and we have accounts, set the first one
+    useEffect(() => {
+        if (accounts.length > 0 && !filters.account_id && !accountsLoading) {
+            updateFilter('account_id', accounts[0].id);
+        }
+    }, [accounts, filters.account_id, accountsLoading, updateFilter]);
+
+    const getAccountIcon = (type) => {
+        switch (type?.toLowerCase()) {
+            case 'cash':
+                return Wallet;
+            case 'credit card':
+                return CreditCard;
+            case 'general':
+                return Banknote;
+            default:
+                return Building;
+        }
+    };
+
+    const getAccountColor = (type) => {
+        switch (type?.toLowerCase()) {
+            case 'cash':
+                return 'bg-emerald-500';
+            case 'credit card':
+                return 'bg-rose-500';
+            case 'general':
+                return 'bg-blue-500';
+            default:
+                return 'bg-purple-500';
+        }
+    };
 
     const presets = [
         { value: 'today', label: 'Today' },
@@ -23,16 +69,17 @@ export default function Overview() {
     ];
 
     return (
-        <div className="h-screen overflow-auto bg-linear-to-b from-primary-gradient to-secondary-gradient">
+        <div className="overflow-auto bg-linear-to-b from-primary-gradient to-secondary-gradient">
             <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
                 {/* Global Filter Header */}
-                <div className="mb-8 bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 border border-gray-300 p-6">
+                <div className="mb-8 bg-white rounded-2xl shadow-md hover:shadow-lg transition-all duration-300 border border-border p-6">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
+                        <div className="flex-1">
                             <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
                             <p className="text-gray-600 mt-1">Track your finances across all components</p>
                         </div>
 
+                        {/* Date Filter */}
                         <div className="flex flex-col md:flex-row gap-4">
                             {/* Preset Selector */}
                             <div className="w-full md:w-64">
@@ -88,23 +135,68 @@ export default function Overview() {
                         </div>
                     </div>
 
-                    {/* Selected Period Display */}
+                    {/* Selected Period and Account Display */}
                     <div className="mt-4 pt-4 border-t border-gray-200">
-                        <p className="text-sm text-gray-600">
-                            Showing data from: <span className="font-medium text-gray-900">
-                                {new Date(filters.date_from).toLocaleDateString()} to {new Date(filters.date_to).toLocaleDateString()}
-                            </span>
-                        </p>
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            {/* Date Range Info */}
+                            <div>
+                                <p className="text-sm text-gray-600">
+                                    Showing data from: <span className="font-medium text-gray-900">
+                                        {new Date(filters.date_from).toLocaleDateString()} to {new Date(filters.date_to).toLocaleDateString()}
+                                    </span>
+                                </p>
+                            </div>
+
+                            {/* Account Info Section */}
+                            {currentAccount ? (
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <p className="text-sm text-gray-600">Currently Viewing</p>
+                                        <p className="text-lg font-bold text-gray-900">
+                                            {currentAccount.account_name}
+                                            <span className="ml-2 text-sm font-normal text-gray-500">
+                                                ({currentAccount.type})
+                                            </span>
+                                        </p>
+                                    </div>
+                                    <div className={`w-10 h-10 rounded-lg ${getAccountColor(currentAccount.type)} flex items-center justify-center`}>
+                                        {(() => {
+                                            const Icon = getAccountIcon(currentAccount.type);
+                                            return <Icon className="w-5 h-5 text-white" />;
+                                        })()}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-right">
+                                    <p className="text-sm text-gray-600">No account selected</p>
+                                    <p className="text-sm font-medium text-gray-900">Select an account from the sidebar</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Account Details without Balance - Hidden on mobile */}
+                        <div className="hidden md:block mt-4">
+                            {/* Help Text for New Users */}
+                            {accounts.length > 0 && (
+                                <div className="mt-3 text-center">
+                                    <p className="text-xs text-gray-500">
+                                        <Info className="w-3 h-3 inline mr-1" />
+                                        All data shown is specific to this account. To view a different account,
+                                        use the account selector in the left sidebar navigation.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
+
                 {/* Recent Transactions */}
                 <div className="mb-6">
                     <RecentTransactions filters={filters} />
                 </div>
 
                 {/* Charts Grid */}
-                {/* Charts Grid with gap-4 */}
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6 h-fit">
                     {/* Left column - Top to Bottom */}
                     <div className="space-y-4">
                         <IncomeExpenseChart filters={filters} />
@@ -117,7 +209,6 @@ export default function Overview() {
                         <GoalOverview filters={filters} />
                     </div>
                 </div>
-
             </main>
         </div>
     );

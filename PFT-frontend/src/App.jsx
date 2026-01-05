@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'; // Import router components
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bounce, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -8,8 +8,6 @@ import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './page/LandingPage';
 import AuthPage from './page/AuthPage';
 import Dashboard from './page/Dashboard';
-
-// 
 import Overview from './components/dashboard/Overview';
 import Transaction from './components/dashboard/Transaction';
 import Budget from './components/dashboard/Budget';
@@ -17,16 +15,18 @@ import Goal from './components/dashboard/Goal';
 import Settings from './components/dashboard/Settings';
 import Profile from './components/dashboard/Profile';
 import Account from './components/dashboard/Account';
+import CreateAccount from './components/dashboard/CreateAccount';
 import { AuthProvider, useAuth } from './context/AuthContext';
-function App() {
+import LoadingScreen from './page/LoadingScreen'; // Import LoadingScreen
 
+function App() {
   const queryClient = new QueryClient();
 
   const PublicRoutes = ({ children }) => {
     const { user, loading } = useAuth();
 
     if (loading) {
-      return <div>Loading...</div>;
+      return <LoadingScreen message="Checking authentication..." />;
     }
 
     if (user) {
@@ -40,7 +40,7 @@ function App() {
     const { user, loading } = useAuth();
 
     if (loading) {
-      return <div>Loading...</div>;
+      return <LoadingScreen message="Checking authentication..." />;
     }
 
     if (!user) {
@@ -78,6 +78,7 @@ function App() {
               <Route path="settings" element={<Settings />} />
               <Route path="profile" element={<Profile />} />
               <Route path="accounts" element={<Account />} />
+              <Route path="create-account" element={<CreateAccount />} />
             </Route>
           </Routes>
           <ToastContainer

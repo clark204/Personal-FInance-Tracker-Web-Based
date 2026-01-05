@@ -50,7 +50,7 @@ class SavingsGoalReached extends Notification implements ShouldQueue
             )
             ->line('Momentum is a powerful thing. Keep going.');
     }
-
+    
 
     public function toArray(object $notifiable): array
     {

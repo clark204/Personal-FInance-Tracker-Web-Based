@@ -205,7 +205,7 @@ export default function GoalOverview({ filters }) {
     // Loading state
     if (isLoading) {
         return (
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 h-full">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-border h-fit">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="font-semibold text-lg text-gray-800">Goal Overview</h2>
@@ -234,7 +234,7 @@ export default function GoalOverview({ filters }) {
     // Error state
     if (error) {
         return (
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 h-full">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-border h-full">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="font-semibold text-lg text-gray-800">Goal Overview</h2>
                 </div>
@@ -253,7 +253,7 @@ export default function GoalOverview({ filters }) {
     // Empty state
     if (sortedGoals.length === 0) {
         return (
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-border">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="font-semibold text-lg text-gray-800">Goal Overview</h2>
                 </div>
@@ -271,7 +271,7 @@ export default function GoalOverview({ filters }) {
     }
 
     return (
-        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-300 h-fit flex flex-col hover:shadow-lg transition-all duration-300">
+        <div className="bg-white p-5 rounded-xl shadow-sm border border-border0 h-fit flex flex-col hover:shadow-lg transition-all duration-300">
             {/* Header */}
             <div className="flex items-center justify-between mb-6 relative">
                 <div>

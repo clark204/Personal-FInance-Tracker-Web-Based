@@ -95,7 +95,7 @@ export default function RecentTransactions({ filters }) {
     };
 
     return (
-        <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg border border-gray-300">
+        <div className="bg-white p-6 rounded-2xl shadow-md hover:shadow-lg border border-border">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
                 <div>

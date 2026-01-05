@@ -226,7 +226,7 @@ export default function BudgetOverview({ filters }) {
     // Loading state
     if (isLoading) {
         return (
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 h-full">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-border h-fit">
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="font-semibold text-lg text-gray-800">Budget Overview</h2>
@@ -255,7 +255,7 @@ export default function BudgetOverview({ filters }) {
     // Error state
     if (error) {
         return (
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 h-full">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-border h-fit">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="font-semibold text-lg text-gray-800">Budget Overview</h2>
                 </div>
@@ -274,7 +274,7 @@ export default function BudgetOverview({ filters }) {
     // Empty state
     if (processedBudgets.length === 0) {
         return (
-            <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 h-full">
+            <div className="bg-white p-5 rounded-xl shadow-sm border border-border h-fit">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="font-semibold text-lg text-gray-800">Budget Overview</h2>
                 </div>
@@ -292,7 +292,7 @@ export default function BudgetOverview({ filters }) {
     }
 
     return (
-        <div className="p-6 bg-white rounded-2xl shadow-md border border-gray-300 transition-all duration-300 hover:shadow-lg h-fit">
+        <div className="p-6 bg-white rounded-2xl shadow-md border border-border transition-all duration-300 hover:shadow-lg h-fit">
             {/* Header */}
             <div className="flex items-center justify-between mb-6 relative">
                 <div>
@@ -355,7 +355,7 @@ export default function BudgetOverview({ filters }) {
                     const StatusIcon = statusConfig.icon;
 
                     return (
-                        <div key={b.id} className="space-y-3 p-3 hover:bg-gray-100 rounded-lg border border-gray-200 hover:border-gray-400 transition-all duration-300">
+                        <div key={b.id} className="space-y-3 p-3 hover:bg-gray-100 rounded-lg border border-gray-200 hover:border-gray-400 transition-all duration-300 h-fit">
                             <div className="flex justify-between items-start gap-4">
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1">

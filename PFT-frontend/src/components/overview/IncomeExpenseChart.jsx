@@ -400,7 +400,7 @@ export default function IncomeExpenseChart({ filters }) {
     const netBalance = totalIncome - totalExpense;
 
     return (
-        <div className="p-6 bg-white rounded-2xl shadow-md border border-gray-300 transition-all duration-300 hover:shadow-lg h-fit">
+        <div className="p-6 bg-white rounded-2xl shadow-md border border-border transition-all duration-300 hover:shadow-lg h-fit">
             <div className="flex items-center justify-between mb-4">
                 <div>
                     <h2 className="font-semibold text-lg text-text">

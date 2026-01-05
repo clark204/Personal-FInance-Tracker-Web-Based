@@ -123,11 +123,11 @@ export default function Sidebar({ onClose }) {
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                     {!isCollapsed && (
                         <>
-                            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-md shadow-lg shadow-emerald-500/20 flex items-center justify-center shrink-0">
-                                <Home className="w-6 h-6 text-white" />
+                            <div className="w-10 h-10 bg-[url('/FT.svg')] bg-cover bg-no-repeat bg-center rounded-md shadow-lg shadow-emerald-500/20 flex items-center justify-center shrink-0">
+                                {/* <Home className="w-6 h-6 text-white" /> */}
                             </div>
                             <div className="min-w-0">
-                                <h1 className="text-emerald-300 text- font-bold tracking-wide truncate">
+                                <h1 className="text-emerald-300 text-md font-bold tracking-wide truncate">
                                     Finance<span className="text-emerald-500">Tracker</span>
                                 </h1>
                                 <p className="text-xs text-slate-400 truncate">Personal Finance</p>
