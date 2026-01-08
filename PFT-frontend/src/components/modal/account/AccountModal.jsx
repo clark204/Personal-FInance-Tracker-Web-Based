@@ -108,7 +108,7 @@ export default function AccountModal({ isOpen, onClose }) {
                             className="bg-white rounded-lg shadow-lg w-full max-w-sm overflow-hidden border border-gray-200 pointer-events-auto"
                         >
                             {/* Compact Header */}
-                            <div className="bg-gradient-to-r from-primary-gradient to-secondary-gradient border-b border-border/30 p-4">
+                            <div className="bg-linear-to-r from-primary-gradient to-secondary-gradient border-b border-border/30 p-4">
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-2">
                                         <div className="p-1.5 bg-white rounded-md border border-gray-200">
