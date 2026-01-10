@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X, Wallet, CreditCard, Globe, TrendingUp, DollarSign } from "lucide-react";
 import { useState, useCallback, memo } from "react";
-import Currency from "../../common/currency";
+import Currency from "../../common/Currency";
 import { useAccount } from "../../../hooks/account";
 
 // Memoize account type button
