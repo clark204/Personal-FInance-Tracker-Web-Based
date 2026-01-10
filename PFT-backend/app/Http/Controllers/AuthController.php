@@ -50,7 +50,7 @@ class AuthController extends Controller
         );
 
         try {
-            Mail::to($user->email)->send(new VerifyEmail($user, $verifyUrl));
+            Mail::to($user->email)->queue(new VerifyEmail($user, $verifyUrl));
         } catch (\Exception $e) {
             Log::error('Mail sending failed: ' . $e->getMessage());
             // Optionally, you can inform the user without throwing 500
@@ -133,7 +133,7 @@ class AuthController extends Controller
                     ['id' => $user->id, 'hash' => sha1($user->email)]
                 );
 
-                Mail::to($user->email)->send(new VerifyEmail($user, $verifyUrl));
+                Mail::to($user->email)->queue(new VerifyEmail($user, $verifyUrl));
                 Cache::put($cacheKey, now(), now()->addMinutes(5));
             }
 
@@ -358,7 +358,7 @@ class AuthController extends Controller
 
             // Send confirmation email BEFORE deleting user
             try {
-                Mail::to($user->email)->send(new AccountDeleted($user));
+                Mail::to($user->email)->queue(new AccountDeleted($user));
 
                 Log::info('Account deletion email sent', [
                     'user_id' => $user->id,
