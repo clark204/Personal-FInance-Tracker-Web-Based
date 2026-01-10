@@ -24,47 +24,6 @@ Route::get('/verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])
 
 Route::get('/currencies', [CurrencyController::class, 'index']);
 
-Route::get('/queue-status', function () {
-    $failed = DB::table('failed_jobs')->count();
-    $pending = DB::table('jobs')->count();
-    
-    return response()->json([
-        'failed_jobs' => $failed,
-        'pending_jobs' => $pending,
-        'message' => 'Queue status retrieved successfully'
-    ]);
-});
-
-Route::get('/clear-queue', function () {
-    Artisan::call('queue:flush');
-    DB::table('failed_jobs')->truncate();
-    DB::table('jobs')->truncate();
-    
-    return response()->json([
-        'message' => 'All queues cleared! Try registering again.',
-        'status' => 'success'
-    ]);
-});
-
-Route::get('/test-email', function () {
-    try {
-        \Illuminate\Support\Facades\Mail::raw('Test email from Laravel with Resend!', function ($message) {
-            $message->to('clarklagumbay0@gmail.com')
-                    ->subject('Test Email - Resend Integration');
-        });
-        
-        return response()->json([
-            'message' => 'Test email sent! Check your inbox.',
-            'status' => 'success'
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'Error: ' . $e->getMessage(),
-            'status' => 'error'
-        ], 500);
-    }
-});
-
 // ----------------------------
 // Protected Routes (JWT)
 // ----------------------------
