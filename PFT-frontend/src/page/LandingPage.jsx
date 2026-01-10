@@ -3,6 +3,8 @@ import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 function LandingPage() {
+    console.log(import.meta.env.VITE_API_URL);
+    
     const { hash } = useLocation();
 
     useEffect(() => {
