@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
             setCheckingAccounts(true);
             const response = await api.get('/accounts');
             const accounts = response.data?.data || response.data?.account || response.data;
-            
+
             // Handle different possible response structures
             let accountArray = [];
             if (Array.isArray(accounts)) {
@@ -35,7 +35,7 @@ export const AuthProvider = ({ children }) => {
             } else if (accounts?.account && Array.isArray(accounts.account)) {
                 accountArray = accounts.account;
             }
-            
+
             const hasAccounts = accountArray.length > 0;
             setHasAccounts(hasAccounts);
             return hasAccounts;
@@ -61,21 +61,21 @@ export const AuthProvider = ({ children }) => {
         const initializeAuth = async () => {
             const token = localStorage.getItem('token');
             const storedUser = localStorage.getItem('user');
-            
+
             if (token && storedUser) {
                 try {
                     const parsedUser = JSON.parse(storedUser);
-                    
+
                     // Set headers first
                     updateAuthHeaders(token);
-                    
+
                     // Verify token is still valid
                     const response = await api.get('/me');
                     const verifiedUser = response.data || parsedUser;
-                    
+
                     setUser(verifiedUser);
                     localStorage.setItem('user', JSON.stringify(verifiedUser));
-                    
+
                     // Check if user has accounts
                     await checkUserAccounts();
                 } catch (error) {
@@ -87,11 +87,11 @@ export const AuthProvider = ({ children }) => {
                     setUser(null);
                 }
             }
-            
+
             setLoading(false);
             initialLoadRef.current = false;
         };
-        
+
         if (initialLoadRef.current) {
             initializeAuth();
         }
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }) => {
             const authenticatedUser = response.data;
             setUser(authenticatedUser);
             localStorage.setItem('user', JSON.stringify(authenticatedUser));
-            
+
             // Check accounts after successful auth check
             await checkUserAccounts();
         } catch (error) {
@@ -118,21 +118,23 @@ export const AuthProvider = ({ children }) => {
         if (isLoggingIn) {
             return { success: false, message: 'Login already in progress' };
         }
-        
+
         setIsLoggingIn(true);
         setLoading(true);
-        
+
         try {
-            const response = await api.post('/login', { email, password }, { 
+            const response = await api.post('/login', { email, password }, {
                 validateStatus: () => true,
-                timeout: 10000 // 10 second timeout
+                timeout: 10000
             });
+
+            console.log('Login response:', response);
 
             // Handle specific status codes
             if (response.status === 401 || response.status === 403) {
-                return { 
-                    success: false, 
-                    message: response.data?.message || 'Invalid email or password' 
+                return {
+                    success: false,
+                    message: response.data?.message || 'Invalid email or password'
                 };
             }
 
@@ -155,42 +157,71 @@ export const AuthProvider = ({ children }) => {
             const { user, authorization } = response.data;
 
             if (!authorization || !authorization.token) {
-                return { 
-                    success: false, 
-                    message: 'Missing authorization data in response' 
+                return {
+                    success: false,
+                    message: 'Missing authorization data in response'
                 };
             }
 
             // Store token and user
             localStorage.setItem('token', authorization.token);
             localStorage.setItem('user', JSON.stringify(user));
-            
+
             // Update auth headers
             updateAuthHeaders(authorization.token);
-            
+
             // Update user state - this triggers re-renders
             setUser(user);
-            
+
             // Wait for state update to complete
             await new Promise(resolve => setTimeout(resolve, 0));
-            
+
             // Check accounts after login
             const accountsCheck = await checkUserAccounts();
-            
+
             // Wait a bit more to ensure all state is updated
             await new Promise(resolve => setTimeout(resolve, 50));
-            
-            return { 
-                success: true, 
+
+            return {
+                success: true,
                 message: 'Login successful',
                 needsAccountSetup: !accountsCheck
             };
         } catch (error) {
             console.error('Login error:', error);
-            return { 
-                success: false, 
-                message: error.message || 'Network error' 
-            };
+            console.error('Error details:', {
+                message: error.message,
+                response: error.response,
+                request: error.request,
+                code: error.code
+            });
+
+            // Better error handling for different error types
+            if (error.response) {
+                // Server responded with an error status
+                return {
+                    success: false,
+                    message: error.response.data?.message || 'Login failed. Please try again.'
+                };
+            } else if (error.request) {
+                // Request was made but no response received
+                return {
+                    success: false,
+                    message: 'Cannot connect to server. Please check your internet connection.'
+                };
+            } else if (error.code === 'ECONNABORTED') {
+                // Request timeout
+                return {
+                    success: false,
+                    message: 'Request timeout. Please try again.'
+                };
+            } else {
+                // Something else happened
+                return {
+                    success: false,
+                    message: error.message || 'An unexpected error occurred. Please try again.'
+                };
+            }
         } finally {
             setLoading(false);
             setIsLoggingIn(false);
@@ -255,16 +286,16 @@ export const AuthProvider = ({ children }) => {
     };
 
     return (
-        <AuthContext.Provider value={{ 
-            user, 
-            loading, 
+        <AuthContext.Provider value={{
+            user,
+            loading,
             hasAccounts,
             checkingAccounts,
             checkUserAccounts,
-            login, 
-            logout, 
-            checkAuth, 
-            register, 
+            login,
+            logout,
+            checkAuth,
+            register,
             setUser,
             isLoggingIn
         }}>
