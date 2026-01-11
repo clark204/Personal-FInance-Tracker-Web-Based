@@ -42,7 +42,7 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password)
         ]);
-
+    
         $verifyUrl = URL::temporarySignedRoute(
             'verification.verify',
             Carbon::now()->addMinutes(60),
