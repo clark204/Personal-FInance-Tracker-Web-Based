@@ -122,28 +122,28 @@ class AuthController extends Controller
 
         $user = Auth::user();
 
-        // if (is_null($user->email_verified_at)) {
-        //     $cacheKey = 'verification_email_sent_' . $user->id;
-        //     $lastSent = Cache::get($cacheKey);
+        if (is_null($user->email_verified_at)) {
+            $cacheKey = 'verification_email_sent_' . $user->id;
+            $lastSent = Cache::get($cacheKey);
 
-        //     if (!$lastSent || now()->diffInMinutes($lastSent) > 5) {
-        //         $verifyUrl = URL::temporarySignedRoute(
-        //             'verification.verify',
-        //             Carbon::now()->addMinutes(60),
-        //             ['id' => $user->id, 'hash' => sha1($user->email)]
-        //         );
+            if (!$lastSent || now()->diffInMinutes($lastSent) > 5) {
+                $verifyUrl = URL::temporarySignedRoute(
+                    'verification.verify',
+                    Carbon::now()->addMinutes(60),
+                    ['id' => $user->id, 'hash' => sha1($user->email)]
+                );
 
-        //         Mail::to($user->email)->send(new VerifyEmail($user, $verifyUrl));
-        //         Cache::put($cacheKey, now(), now()->addMinutes(5));
-        //     }
+                Mail::to($user->email)->send(new VerifyEmail($user, $verifyUrl));
+                Cache::put($cacheKey, now(), now()->addMinutes(5));
+            }
 
-        //     Auth::logout();
+            Auth::logout();
 
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message' => 'Email not verified. A new verification link has been sent to your email.'
-        //     ], HttpResponse::HTTP_FORBIDDEN);
-        // }
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Email not verified. A new verification link has been sent to your email.'
+            ], HttpResponse::HTTP_FORBIDDEN);
+        }
 
 
         return response()->json([
