@@ -5,29 +5,31 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 const api = axios.create({
     baseURL: API_BASE_URL,
     headers: {
-        'Content-Type': 'application/json'
-    }
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+    },
+    withCredentials: true
 });
 
 api.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
         if (token) {
-            config.headers.Authorization = `Bearer ${token}`
+            config.headers.Authorization = `Bearer ${token}`;
         }
-
         return config;
     },
     (error) => {
         return Promise.reject(error);
     }
-)
+);
 
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const originalRequest = error.config;
 
+        // Only handle 401 errors for token refresh
         if (error.response?.status === 401 && !originalRequest._retry) {
             originalRequest._retry = true;
 
@@ -42,7 +44,7 @@ api.interceptors.response.use(
                     const newToken = response.data.Authorization.token;
                     localStorage.setItem('token', newToken);
 
-                    originalRequest.headers.Authorization = `Bearer ${newToken}`
+                    originalRequest.headers.Authorization = `Bearer ${newToken}`;
                     return axios(originalRequest);
                 } catch (refreshError) {
                     localStorage.removeItem('token');
@@ -51,10 +53,11 @@ api.interceptors.response.use(
                     return Promise.reject(refreshError);
                 }
             }
-
-            return Promise.reject(error);
         }
+        
+        // ✅ CRITICAL: Always reject errors so they reach the catch block
+        return Promise.reject(error);
     }
-)
+);
 
 export default api;
